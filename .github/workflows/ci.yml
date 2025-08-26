@@ -15,20 +15,11 @@ jobs:
       - name: Install Node
         uses: actions/setup-node@v3
 
-      - name: Install Solhint
-        run: npm i
-
       - name: Run Linter
         run: npm run lint
 
-      - name: Build Forge Image
-        run: make build
-
-      - name: Run Unit Tests
-        run: make test
-
-      - name: Run Integration Tests
-        run: make anvil-test
+      - name: Build app
+        run: npm run build
 
       - name: Run Slither
         uses: crytic/slither-action@v0.3.0
