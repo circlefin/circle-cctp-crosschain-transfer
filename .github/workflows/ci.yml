@@ -24,11 +24,6 @@ jobs:
       - name: Build app
         run: npm run build
 
-      - name: Run Slither
-        uses: crytic/slither-action@v0.3.0
-        with:
-          fail-on: none
-
   scan:
     needs: lint-and-test
     if: github.event_name == 'pull_request'
