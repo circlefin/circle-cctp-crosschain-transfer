@@ -29,6 +29,7 @@ import {
   optimismSepolia,
   unichainSepolia,
   polygonAmoy,
+  seiTestnet,
 } from "viem/chains";
 import { defineChain } from "viem";
 // Solana imports
@@ -110,6 +111,7 @@ const chains = {
   [SupportedChainId.CODEX_TESTNET]: codexTestnet,
   [SupportedChainId.UNICHAIN_SEPOLIA]: unichainSepolia,
   [SupportedChainId.POLYGON_AMOY]: polygonAmoy,
+  [SupportedChainId.SEI_TESTNET]: seiTestnet,
 };
 
 // Solana RPC endpoint imported from chains.ts

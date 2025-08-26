@@ -13,6 +13,7 @@ This sample application demonstrates Cross-Chain Transfer Protocol (CCTP) step-b
 - Codex Testnet
 - Unichain Sepolia
 - Polygon PoS Amoy
+- Sei Testnet
 
 ## Environment Setup
 
