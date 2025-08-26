@@ -1,0 +1,8 @@
+repos:
+  - repo: local
+    hooks:
+      - id: trufflehog-local
+        name: trufflehog (local)
+        entry: trufflehog git file://. --only-verified
+        language: system
+        pass_filenames: false
