@@ -12,6 +12,7 @@ export enum SupportedChainId {
   CODEX_TESTNET = 812242,
   UNICHAIN_SEPOLIA = 1301,
   POLYGON_AMOY = 80002,
+  SEI_TESTNET = 1328,
 }
 
 export const CHAIN_TO_CHAIN_NAME: Record<number, string> = {
@@ -27,6 +28,7 @@ export const CHAIN_TO_CHAIN_NAME: Record<number, string> = {
   [SupportedChainId.CODEX_TESTNET]: "Codex Testnet",
   [SupportedChainId.UNICHAIN_SEPOLIA]: "Unichain Sepolia",
   [SupportedChainId.POLYGON_AMOY]: "Polygon Amoy",
+  [SupportedChainId.SEI_TESTNET]: "Sei Testnet",
 };
 
 export const CHAIN_IDS_TO_USDC_ADDRESSES: Record<number, string> = {
@@ -49,6 +51,7 @@ export const CHAIN_IDS_TO_USDC_ADDRESSES: Record<number, string> = {
   [SupportedChainId.UNICHAIN_SEPOLIA]:
     "0x31d0220469e10c4E71834a79b1f276d740d3768F",
   [SupportedChainId.POLYGON_AMOY]: "0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582",
+  [SupportedChainId.SEI_TESTNET]: "0x4fCF1784B31630811181f670Aea7A7bEF803eaED",
 };
 
 export const CHAIN_IDS_TO_TOKEN_MESSENGER_ADDRESSES: Record<number, string> = {
@@ -71,6 +74,7 @@ export const CHAIN_IDS_TO_TOKEN_MESSENGER_ADDRESSES: Record<number, string> = {
   [SupportedChainId.UNICHAIN_SEPOLIA]:
     "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
   [SupportedChainId.POLYGON_AMOY]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
+  [SupportedChainId.SEI_TESTNET]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
 };
 
 export const CHAIN_IDS_TO_MESSAGE_TRANSMITTER_ADDRESSES: Record<
@@ -96,6 +100,7 @@ export const CHAIN_IDS_TO_MESSAGE_TRANSMITTER_ADDRESSES: Record<
   [SupportedChainId.UNICHAIN_SEPOLIA]:
     "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
   [SupportedChainId.POLYGON_AMOY]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
+  [SupportedChainId.SEI_TESTNET]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
 };
 
 export const DESTINATION_DOMAINS: Record<number, number> = {
@@ -111,4 +116,5 @@ export const DESTINATION_DOMAINS: Record<number, number> = {
   [SupportedChainId.CODEX_TESTNET]: 12,
   [SupportedChainId.UNICHAIN_SEPOLIA]: 10,
   [SupportedChainId.POLYGON_AMOY]: 7,
+  [SupportedChainId.SEI_TESTNET]: 16,
 };
