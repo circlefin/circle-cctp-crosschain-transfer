@@ -483,8 +483,9 @@ export function useCrossChainTransfer() {
       }
 
       // Get the EVM address that will call receiveMessage
+      const evmPrivateKey = getPrivateKeyForChain(destinationChainId);
       const evmAccount = privateKeyToAccount(
-        `0x${process.env.NEXT_PUBLIC_EVM_PRIVATE_KEY}`,
+        `0x${evmPrivateKey.replace(/^0x/, "")}`,
       );
       const evmAddress = evmAccount.address;
       const destinationCaller = new PublicKey(
