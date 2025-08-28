@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Cross-Chain USDC Transfer",
-  description: "Sample application for cross-chain USDC transfers using CCTP",
+  title: "Circle CCTP USDC Transfer",
+  description: "Sample Application for CCTP USDC Transfer",
 };
 
 export default function RootLayout({
