@@ -52,3 +52,4 @@ cp .env.example .env.local
    ```
 
 The sample app will be running at [http://localhost:3000](http://localhost:3000).
+
