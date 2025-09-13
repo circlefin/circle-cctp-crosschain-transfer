@@ -19,7 +19,7 @@
     "@solana/spl-token": "^0.4.13",
     "@solana/web3.js": "^1.98.4",
     "@tanstack/react-query": "^5.85.5",
-    "axios": "^1.11.0",
+    "axios": "^1.12.0",
     "bs58": "^6.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
