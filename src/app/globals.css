@@ -16,7 +16,9 @@
  * limitations under the License.
  */
 
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 @theme {
   /* map HSL tokens to Tailwind colors */
