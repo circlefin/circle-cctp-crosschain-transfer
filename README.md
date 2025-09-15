@@ -15,6 +15,8 @@ This sample application demonstrates Cross-Chain Transfer Protocol (CCTP) step-b
 - Unichain Sepolia
 - Polygon PoS Amoy
 - Sei Testnet
+- XDC_TESTNET
+- PLUME_TESTNET 
 
 ## Environment Setup
 
