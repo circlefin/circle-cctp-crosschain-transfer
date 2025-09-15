@@ -32,6 +32,8 @@ export enum SupportedChainId {
   UNICHAIN_SEPOLIA = 1301,
   POLYGON_AMOY = 80002,
   SEI_TESTNET = 1328,
+  XDC_TESTNET = 51,
+  PLUME_TESTNET = 98867
 }
 
 export const DEFAULT_MAX_FEE = 1000n;
@@ -51,6 +53,8 @@ export const CHAIN_TO_CHAIN_NAME: Record<number, string> = {
   [SupportedChainId.UNICHAIN_SEPOLIA]: "Unichain Sepolia",
   [SupportedChainId.POLYGON_AMOY]: "Polygon Amoy",
   [SupportedChainId.SEI_TESTNET]: "Sei Testnet",
+  [SupportedChainId.XDC_TESTNET]: "XDC Testnet",
+  [SupportedChainId.PLUME_TESTNET]: "Plume Testnet",
 };
 
 export const CHAIN_IDS_TO_USDC_ADDRESSES: Record<number, Hex | string> = {
@@ -74,6 +78,8 @@ export const CHAIN_IDS_TO_USDC_ADDRESSES: Record<number, Hex | string> = {
     "0x31d0220469e10c4E71834a79b1f276d740d3768F",
   [SupportedChainId.POLYGON_AMOY]: "0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582",
   [SupportedChainId.SEI_TESTNET]: "0x4fCF1784B31630811181f670Aea7A7bEF803eaED",
+  [SupportedChainId.XDC_TESTNET]: "0xb5AB69F7bBada22B28e79C8FFAECe55eF1c771D4",
+  [SupportedChainId.PLUME_TESTNET]: "0xcB5f30e335672893c7eb944B374c196392C19D18",
 };
 
 export const CHAIN_IDS_TO_TOKEN_MESSENGER: Record<number, Hex | string> = {
@@ -97,6 +103,8 @@ export const CHAIN_IDS_TO_TOKEN_MESSENGER: Record<number, Hex | string> = {
     "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
   [SupportedChainId.POLYGON_AMOY]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
   [SupportedChainId.SEI_TESTNET]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
+  [SupportedChainId.XDC_TESTNET]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
+  [SupportedChainId.PLUME_TESTNET]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
 };
 
 export const CHAIN_IDS_TO_MESSAGE_TRANSMITTER: Record<number, Hex | string> = {
@@ -120,6 +128,8 @@ export const CHAIN_IDS_TO_MESSAGE_TRANSMITTER: Record<number, Hex | string> = {
     "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
   [SupportedChainId.POLYGON_AMOY]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
   [SupportedChainId.SEI_TESTNET]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
+  [SupportedChainId.XDC_TESTNET]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
+  [SupportedChainId.PLUME_TESTNET]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
 };
 
 export const DESTINATION_DOMAINS: Record<number, number> = {
@@ -136,6 +146,8 @@ export const DESTINATION_DOMAINS: Record<number, number> = {
   [SupportedChainId.UNICHAIN_SEPOLIA]: 10,
   [SupportedChainId.POLYGON_AMOY]: 7,
   [SupportedChainId.SEI_TESTNET]: 16,
+  [SupportedChainId.XDC_TESTNET]: 18,
+  [SupportedChainId.PLUME_TESTNET]: 22,
 };
 
 export const SUPPORTED_CHAINS = [
@@ -152,6 +164,8 @@ export const SUPPORTED_CHAINS = [
   SupportedChainId.UNICHAIN_SEPOLIA,
   SupportedChainId.POLYGON_AMOY,
   SupportedChainId.SEI_TESTNET,
+  SupportedChainId.XDC_TESTNET,
+  SupportedChainId.PLUME_TESTNET,
 ];
 
 // Solana RPC endpoint
