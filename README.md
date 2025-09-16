@@ -42,7 +42,7 @@ cp .env.example .env.local
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/circlefin/cctp-v2-web-app.git
+   git clone https://github.com/circlefin/circle-cctp-crosschain-transfer.git
    ```
 2. Install dependencies.
    ```bash
