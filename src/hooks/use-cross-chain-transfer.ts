@@ -48,7 +48,8 @@ import {
   unichainSepolia,
   polygonAmoy,
   seiTestnet,
-  xdcTestnet
+  xdcTestnet,
+  hyperliquidEvmTestnet,
 } from "viem/chains";
 import { defineChain } from "viem";
 
@@ -151,6 +152,7 @@ const chains = {
   [SupportedChainId.SEI_TESTNET]: seiTestnet,
   [SupportedChainId.PLUME_TESTNET]: plumeTestnet,
   [SupportedChainId.XDC_TESTNET]: xdcTestnet,
+  [SupportedChainId.HYPEREVM_TESTNET]: hyperliquidEvmTestnet,
 };
 
 // Solana RPC endpoint imported from chains.ts
