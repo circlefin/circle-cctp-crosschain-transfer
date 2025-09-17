@@ -152,7 +152,7 @@ const chains = {
   [SupportedChainId.SEI_TESTNET]: seiTestnet,
   [SupportedChainId.PLUME_TESTNET]: plumeTestnet,
   [SupportedChainId.XDC_TESTNET]: xdcTestnet,
-  [SupportedChainId.HYPERLIQUID_EVM_TESTNET]: hyperliquidEvmTestnet,
+  [SupportedChainId.HYPEREVM_TESTNET]: hyperliquidEvmTestnet,
 };
 
 // Solana RPC endpoint imported from chains.ts

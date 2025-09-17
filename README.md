@@ -17,7 +17,7 @@ This sample application demonstrates Cross-Chain Transfer Protocol (CCTP) step-b
 - Sei Testnet
 - XDC Testnet
 - Plume Testnet
-- Hyperliquid EVM Testnet
+- HyperEVM Testnet
 
 ## Environment Setup
 

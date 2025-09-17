@@ -33,7 +33,7 @@ export enum SupportedChainId {
   SEI_TESTNET = 1328,
   XDC_TESTNET = 51,
   PLUME_TESTNET = 98867,
-  HYPERLIQUID_EVM_TESTNET = 998,
+  HYPEREVM_TESTNET = 998,
 }
 
 export const CHAIN_TO_CHAIN_NAME: Record<number, string> = {
@@ -52,7 +52,7 @@ export const CHAIN_TO_CHAIN_NAME: Record<number, string> = {
   [SupportedChainId.SEI_TESTNET]: "Sei Testnet",
   [SupportedChainId.XDC_TESTNET]: "XDC Testnet",
   [SupportedChainId.PLUME_TESTNET]: "Plume Testnet",
-  [SupportedChainId.HYPERLIQUID_EVM_TESTNET]: "Hyperliquid EVM Testnet",
+  [SupportedChainId.HYPEREVM_TESTNET]: "Hyperliquid EVM Testnet",
 };
 
 export const CHAIN_IDS_TO_USDC_ADDRESSES: Record<number, string> = {
@@ -78,7 +78,7 @@ export const CHAIN_IDS_TO_USDC_ADDRESSES: Record<number, string> = {
   [SupportedChainId.SEI_TESTNET]: "0x4fCF1784B31630811181f670Aea7A7bEF803eaED",
   [SupportedChainId.XDC_TESTNET]: "0xb5AB69F7bBada22B28e79C8FFAECe55eF1c771D4",
   [SupportedChainId.PLUME_TESTNET]: "0xcB5f30e335672893c7eb944B374c196392C19D18",
-  [SupportedChainId.HYPERLIQUID_EVM_TESTNET]: "0x2B3370eE501B4a559b57D449569354196457D8Ab",
+  [SupportedChainId.HYPEREVM_TESTNET]: "0x2B3370eE501B4a559b57D449569354196457D8Ab",
 };
 
 export const CHAIN_IDS_TO_TOKEN_MESSENGER_ADDRESSES: Record<number, string> = {
@@ -104,7 +104,7 @@ export const CHAIN_IDS_TO_TOKEN_MESSENGER_ADDRESSES: Record<number, string> = {
   [SupportedChainId.SEI_TESTNET]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
   [SupportedChainId.XDC_TESTNET]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
   [SupportedChainId.PLUME_TESTNET]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
-  [SupportedChainId.HYPERLIQUID_EVM_TESTNET]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
+  [SupportedChainId.HYPEREVM_TESTNET]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
 };
 
 export const CHAIN_IDS_TO_MESSAGE_TRANSMITTER_ADDRESSES: Record<
@@ -133,7 +133,7 @@ export const CHAIN_IDS_TO_MESSAGE_TRANSMITTER_ADDRESSES: Record<
   [SupportedChainId.SEI_TESTNET]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
   [SupportedChainId.XDC_TESTNET]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
   [SupportedChainId.PLUME_TESTNET]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
-  [SupportedChainId.HYPERLIQUID_EVM_TESTNET]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
+  [SupportedChainId.HYPEREVM_TESTNET]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
 };
 
 export const DESTINATION_DOMAINS: Record<number, number> = {
@@ -152,5 +152,5 @@ export const DESTINATION_DOMAINS: Record<number, number> = {
   [SupportedChainId.SEI_TESTNET]: 16,
   [SupportedChainId.XDC_TESTNET]: 18,
   [SupportedChainId.PLUME_TESTNET]: 22,
-  [SupportedChainId.HYPERLIQUID_EVM_TESTNET]: 19,
+  [SupportedChainId.HYPEREVM_TESTNET]: 19,
 };
