@@ -149,7 +149,7 @@ const chains = {
   [SupportedChainId.PLUME_TESTNET]: plumeTestnet,
   [SupportedChainId.XDC_TESTNET]: xdcTestnet,
   [SupportedChainId.HYPEREVM_TESTNET]: hyperliquidEvmTestnet,
-  [SupportedChainId.INK_TESTNET]: inkSepolia,
+  [SupportedChainId.INK_SEPOLIA]: inkSepolia,
 };
 
 export function useCrossChainTransfer() {
