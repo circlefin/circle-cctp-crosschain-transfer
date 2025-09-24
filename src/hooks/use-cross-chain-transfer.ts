@@ -72,7 +72,12 @@ const plumeTestnet = defineChain({
 });
 
 // Solana imports
-import { Connection, Keypair, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import {
+  Connection,
+  Keypair,
+  PublicKey,
+  LAMPORTS_PER_SOL,
+} from "@solana/web3.js";
 import {
   getAssociatedTokenAddress,
   getAccount,
@@ -155,7 +160,10 @@ export function useCrossChainTransfer() {
   const DEFAULT_DECIMALS = 6;
 
   const addLog = (message: string) =>
-    setLogs((prev) => [...prev, `[${new Date().toLocaleTimeString()}] ${message}`]);
+    setLogs((prev) => [
+      ...prev,
+      `[${new Date().toLocaleTimeString()}] ${message}`,
+    ]);
 
   // Utility function to check if a chain is Solana
   const isSolanaChain = (chainId: number): boolean => {
@@ -203,7 +211,9 @@ export function useCrossChainTransfer() {
       }
       return solanaKey;
     } else {
-      const evmKey = process.env.NEXT_PUBLIC_EVM_PRIVATE_KEY || process.env.NEXT_PUBLIC_PRIVATE_KEY;
+      const evmKey =
+        process.env.NEXT_PUBLIC_EVM_PRIVATE_KEY ||
+        process.env.NEXT_PUBLIC_PRIVATE_KEY;
       if (!evmKey) {
         throw new Error(
           "EVM private key not found. Please set NEXT_PUBLIC_EVM_PRIVATE_KEY in your environment."
@@ -245,13 +255,19 @@ export function useCrossChainTransfer() {
     const connection = getSolanaConnection();
     const privateKey = getPrivateKeyForChain(chainId);
     const keypair = getSolanaKeypair(privateKey);
-    const usdcMint = new PublicKey(CHAIN_IDS_TO_USDC_ADDRESSES[chainId] as string);
+    const usdcMint = new PublicKey(
+      CHAIN_IDS_TO_USDC_ADDRESSES[chainId] as string
+    );
 
     try {
-      const associatedTokenAddress = await getAssociatedTokenAddress(usdcMint, keypair.publicKey);
+      const associatedTokenAddress = await getAssociatedTokenAddress(
+        usdcMint,
+        keypair.publicKey
+      );
 
       const tokenAccount = await getAccount(connection, associatedTokenAddress);
-      const balance = Number(tokenAccount.amount) / Math.pow(10, DEFAULT_DECIMALS);
+      const balance =
+        Number(tokenAccount.amount) / Math.pow(10, DEFAULT_DECIMALS);
       return balance.toString();
     } catch (error) {
       if (
@@ -320,7 +336,10 @@ export function useCrossChainTransfer() {
             },
           ],
           functionName: "approve",
-          args: [CHAIN_IDS_TO_TOKEN_MESSENGER[sourceChainId] as `0x${string}`, 10000000000n],
+          args: [
+            CHAIN_IDS_TO_TOKEN_MESSENGER[sourceChainId] as `0x${string}`,
+            10000000000n,
+          ],
         }),
       });
 
@@ -364,11 +383,16 @@ export function useCrossChainTransfer() {
           CHAIN_IDS_TO_USDC_ADDRESSES[SupportedChainId.SOLANA_DEVNET] as string
         );
         const destinationWallet = new PublicKey(destinationAddress);
-        const tokenAccount = await getAssociatedTokenAddress(usdcMint, destinationWallet);
+        const tokenAccount = await getAssociatedTokenAddress(
+          usdcMint,
+          destinationWallet
+        );
         mintRecipient = hexlify(bs58.decode(tokenAccount.toBase58()));
       } else {
         // For EVM destinations, pad the hex address
-        mintRecipient = `0x${destinationAddress.replace(/^0x/, "").padStart(64, "0")}`;
+        mintRecipient = `0x${destinationAddress
+          .replace(/^0x/, "")
+          .padStart(64, "0")}`;
       }
 
       const tx = await client.sendTransaction({
@@ -424,12 +448,17 @@ export function useCrossChainTransfer() {
     addLog("Burning Solana USDC...");
 
     try {
-      const { getAnchorConnection, getPrograms, getDepositForBurnPdas, evmAddressToBytes32 } =
-        await import("@/lib/solana-utils");
+      const {
+        getAnchorConnection,
+        getPrograms,
+        getDepositForBurnPdas,
+        evmAddressToBytes32,
+      } = await import("@/lib/solana-utils");
       const { getAssociatedTokenAddress } = await import("@solana/spl-token");
 
       const provider = getAnchorConnection(keypair, SOLANA_RPC_ENDPOINT);
-      const { messageTransmitterProgram, tokenMessengerMinterProgram } = getPrograms(provider);
+      const { messageTransmitterProgram, tokenMessengerMinterProgram } =
+        getPrograms(provider);
 
       const usdcMint = new PublicKey(
         CHAIN_IDS_TO_USDC_ADDRESSES[SupportedChainId.SOLANA_DEVNET] as string
@@ -445,7 +474,10 @@ export function useCrossChainTransfer() {
       const messageSentEventAccountKeypair = Keypair.generate();
 
       // Get user's token account
-      const userTokenAccount = await getAssociatedTokenAddress(usdcMint, keypair.publicKey);
+      const userTokenAccount = await getAssociatedTokenAddress(
+        usdcMint,
+        keypair.publicKey
+      );
 
       // Convert destination address based on chain type
       let mintRecipient: PublicKey;
@@ -455,9 +487,13 @@ export function useCrossChainTransfer() {
         mintRecipient = new PublicKey(destinationAddress);
       } else {
         // For EVM chains, ensure address is properly formatted
-        const cleanAddress = destinationAddress.replace(/^0x/, "").toLowerCase();
+        const cleanAddress = destinationAddress
+          .replace(/^0x/, "")
+          .toLowerCase();
         if (cleanAddress.length !== 40) {
-          throw new Error(`Invalid EVM address length: ${cleanAddress.length}, expected 40`);
+          throw new Error(
+            `Invalid EVM address length: ${cleanAddress.length}, expected 40`
+          );
         }
         const formattedAddress = `0x${cleanAddress}`;
         // Convert address to bytes32 format then to PublicKey
@@ -467,12 +503,18 @@ export function useCrossChainTransfer() {
 
       // Get the EVM address that will call receiveMessage
       const evmPrivateKey = getPrivateKeyForChain(destinationChainId);
-      const evmAccount = privateKeyToAccount(`0x${evmPrivateKey.replace(/^0x/, "")}`);
+      const evmAccount = privateKeyToAccount(
+        `0x${evmPrivateKey.replace(/^0x/, "")}`
+      );
       const evmAddress = evmAccount.address;
-      const destinationCaller = new PublicKey(getBytes(evmAddressToBytes32(evmAddress)));
+      const destinationCaller = new PublicKey(
+        getBytes(evmAddressToBytes32(evmAddress))
+      );
 
       // Call depositForBurn using Circle's exact approach
-      const depositForBurnTx = await (tokenMessengerMinterProgram as any).methods
+      const depositForBurnTx = await (
+        tokenMessengerMinterProgram as any
+      ).methods
         .depositForBurn({
           amount: new BN(amount.toString()),
           destinationDomain: DESTINATION_DOMAINS[destinationChainId],
@@ -505,12 +547,19 @@ export function useCrossChainTransfer() {
       return depositForBurnTx;
     } catch (err) {
       setError("Solana burn failed");
-      addLog(`Solana burn error: ${err instanceof Error ? err.message : "Unknown error"}`);
+      addLog(
+        `Solana burn error: ${
+          err instanceof Error ? err.message : "Unknown error"
+        }`
+      );
       throw err;
     }
   };
 
-  const retrieveAttestation = async (transactionHash: string, sourceChainId: number) => {
+  const retrieveAttestation = async (
+    transactionHash: string,
+    sourceChainId: number
+  ) => {
     setCurrentStep("waiting-attestation");
     addLog("Retrieving attestation...");
 
@@ -531,7 +580,11 @@ export function useCrossChainTransfer() {
           continue;
         }
         setError("Attestation retrieval failed");
-        addLog(`Attestation error: ${error instanceof Error ? error.message : "Unknown error"}`);
+        addLog(
+          `Attestation error: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`
+        );
         throw error;
       }
     }
@@ -555,7 +608,9 @@ export function useCrossChainTransfer() {
         });
         const feeData = await publicClient.estimateFeesPerGas();
         const contractConfig = {
-          address: CHAIN_IDS_TO_MESSAGE_TRANSMITTER[destinationChainId] as `0x${string}`,
+          address: CHAIN_IDS_TO_MESSAGE_TRANSMITTER[
+            destinationChainId
+          ] as `0x${string}`,
           abi: [
             {
               type: "function",
@@ -625,7 +680,8 @@ export function useCrossChainTransfer() {
       const { getAssociatedTokenAddress } = await import("@solana/spl-token");
 
       const provider = getAnchorConnection(keypair, SOLANA_RPC_ENDPOINT);
-      const { messageTransmitterProgram, tokenMessengerMinterProgram } = getPrograms(provider);
+      const { messageTransmitterProgram, tokenMessengerMinterProgram } =
+        getPrograms(provider);
 
       const usdcMint = new PublicKey(
         CHAIN_IDS_TO_USDC_ADDRESSES[SupportedChainId.SOLANA_DEVNET] as string
@@ -642,7 +698,9 @@ export function useCrossChainTransfer() {
       // This would typically be the USDC address on the source chain
       let remoteTokenAddressHex = "";
       // Find the source chain USDC address
-      for (const [chainId, usdcAddress] of Object.entries(CHAIN_IDS_TO_USDC_ADDRESSES)) {
+      for (const [chainId, usdcAddress] of Object.entries(
+        CHAIN_IDS_TO_USDC_ADDRESSES
+      )) {
         if (
           DESTINATION_DOMAINS[parseInt(chainId)] === sourceDomain &&
           !isSolanaChain(parseInt(chainId))
@@ -662,7 +720,10 @@ export function useCrossChainTransfer() {
       );
 
       // Get user's token account
-      const userTokenAccount = await getAssociatedTokenAddress(usdcMint, keypair.publicKey);
+      const userTokenAccount = await getAssociatedTokenAddress(
+        usdcMint,
+        keypair.publicKey
+      );
 
       // Build account metas array for remaining accounts
       const accountMetas = [
@@ -742,7 +803,11 @@ export function useCrossChainTransfer() {
       setError("Solana mint failed");
       addLog(
         `Solana mint error: ${
-          err instanceof Error ? err.message : typeof err === "string" ? err : JSON.stringify(err)
+          err instanceof Error
+            ? err.message
+            : typeof err === "string"
+            ? err
+            : JSON.stringify(err)
         }`
       );
       throw err;
@@ -779,7 +844,9 @@ export function useCrossChainTransfer() {
       } else {
         // Destination is EVM, so get EVM address
         const destinationPrivateKey = getPrivateKeyForChain(destinationChainId);
-        const account = privateKeyToAccount(`0x${destinationPrivateKey.replace(/^0x/, "")}`);
+        const account = privateKeyToAccount(
+          `0x${destinationPrivateKey.replace(/^0x/, "")}`
+        );
         defaultDestination = account.address;
       }
 
@@ -797,7 +864,9 @@ export function useCrossChainTransfer() {
             transport: http(),
           });
           const privateKey = getPrivateKeyForChain(chainId);
-          const account = privateKeyToAccount(`0x${privateKey.replace(/^0x/, "")}`);
+          const account = privateKeyToAccount(
+            `0x${privateKey.replace(/^0x/, "")}`
+          );
           const balance = await publicClient.getBalance({
             address: account.address,
           });
@@ -854,7 +923,9 @@ export function useCrossChainTransfer() {
       }
     } catch (error) {
       setCurrentStep("error");
-      addLog(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+      addLog(
+        `Error: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
     }
   };
 

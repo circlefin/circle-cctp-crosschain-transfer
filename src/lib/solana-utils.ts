@@ -17,7 +17,12 @@
  */
 
 import * as anchor from "@coral-xyz/anchor";
-import { Keypair, PublicKey, Transaction, VersionedTransaction } from "@solana/web3.js";
+import {
+  Keypair,
+  PublicKey,
+  Transaction,
+  VersionedTransaction,
+} from "@solana/web3.js";
 import { hexlify } from "ethers";
 import bs58 from "bs58";
 import { getAssociatedTokenAddress } from "@solana/spl-token";
@@ -37,7 +42,8 @@ import type { TokenMessengerMinterV2 } from "../solana/types/token_messenger_min
 import type { MessageTransmitterV2 } from "../solana/types/message_transmitter";
 
 // Use constants from chains.ts
-export const SOLANA_SRC_DOMAIN_ID = DESTINATION_DOMAINS[SupportedChainId.SOLANA_DEVNET];
+export const SOLANA_SRC_DOMAIN_ID =
+  DESTINATION_DOMAINS[SupportedChainId.SOLANA_DEVNET];
 export const SOLANA_USDC_ADDRESS = CHAIN_IDS_TO_USDC_ADDRESSES[
   SupportedChainId.SOLANA_DEVNET
 ] as string;
@@ -51,7 +57,9 @@ export interface FindProgramAddressResponse {
 export class NodeWallet implements anchor.Wallet {
   constructor(readonly payer: Keypair) {}
 
-  async signTransaction<T extends Transaction | VersionedTransaction>(tx: T): Promise<T> {
+  async signTransaction<T extends Transaction | VersionedTransaction>(
+    tx: T
+  ): Promise<T> {
     if (isVersionedTransaction(tx)) {
       tx.sign([this.payer]);
     } else {
@@ -61,7 +69,9 @@ export class NodeWallet implements anchor.Wallet {
     return tx;
   }
 
-  async signAllTransactions<T extends Transaction | VersionedTransaction>(txs: T[]): Promise<T[]> {
+  async signAllTransactions<T extends Transaction | VersionedTransaction>(
+    txs: T[]
+  ): Promise<T[]> {
     return txs.map((t) => {
       if (isVersionedTransaction(t)) {
         t.sign([this.payer]);
@@ -84,7 +94,10 @@ export const isVersionedTransaction = (
 };
 
 // Configure client to use the provider and return it
-export const getAnchorConnection = (keypair: Keypair, rpcUrl: string = SOLANA_RPC_ENDPOINT) => {
+export const getAnchorConnection = (
+  keypair: Keypair,
+  rpcUrl: string = SOLANA_RPC_ENDPOINT
+) => {
   const connection = new anchor.web3.Connection(rpcUrl, "confirmed");
   const wallet = new NodeWallet(keypair);
   const provider = new anchor.AnchorProvider(connection, wallet, {
@@ -101,16 +114,20 @@ export const getPrograms = (provider: anchor.AnchorProvider) => {
     provider
   );
 
-  const tokenMessengerMinterProgram = new anchor.Program<TokenMessengerMinterV2>(
-    TokenMessengerMinterIdl as TokenMessengerMinterV2,
-    provider
-  );
+  const tokenMessengerMinterProgram =
+    new anchor.Program<TokenMessengerMinterV2>(
+      TokenMessengerMinterIdl as TokenMessengerMinterV2,
+      provider
+    );
 
   return { messageTransmitterProgram, tokenMessengerMinterProgram };
 };
 
 export const getDepositForBurnPdas = (
-  { messageTransmitterProgram, tokenMessengerMinterProgram }: ReturnType<typeof getPrograms>,
+  {
+    messageTransmitterProgram,
+    tokenMessengerMinterProgram,
+  }: ReturnType<typeof getPrograms>,
   usdcAddress: PublicKey,
   destinationDomain: number
 ) => {
@@ -126,9 +143,11 @@ export const getDepositForBurnPdas = (
     "token_minter",
     tokenMessengerMinterProgram.programId
   );
-  const localToken = findProgramAddress("local_token", tokenMessengerMinterProgram.programId, [
-    usdcAddress,
-  ]);
+  const localToken = findProgramAddress(
+    "local_token",
+    tokenMessengerMinterProgram.programId,
+    [usdcAddress]
+  );
   const remoteTokenMessengerKey = findProgramAddress(
     "remote_token_messenger",
     tokenMessengerMinterProgram.programId,
@@ -150,7 +169,10 @@ export const getDepositForBurnPdas = (
 };
 
 export const getReceiveMessagePdas = async (
-  { messageTransmitterProgram, tokenMessengerMinterProgram }: ReturnType<typeof getPrograms>,
+  {
+    messageTransmitterProgram,
+    tokenMessengerMinterProgram,
+  }: ReturnType<typeof getPrograms>,
   solUsdcAddress: PublicKey,
   remoteUsdcAddressHex: string,
   remoteDomain: string,
@@ -168,22 +190,27 @@ export const getReceiveMessagePdas = async (
     "token_minter",
     tokenMessengerMinterProgram.programId
   );
-  const localToken = findProgramAddress("local_token", tokenMessengerMinterProgram.programId, [
-    solUsdcAddress,
-  ]);
+  const localToken = findProgramAddress(
+    "local_token",
+    tokenMessengerMinterProgram.programId,
+    [solUsdcAddress]
+  );
   const remoteTokenMessengerKey = findProgramAddress(
     "remote_token_messenger",
     tokenMessengerMinterProgram.programId,
     [remoteDomain]
   );
   const remoteTokenKey = new PublicKey(hexToBytes(remoteUsdcAddressHex));
-  const tokenPair = findProgramAddress("token_pair", tokenMessengerMinterProgram.programId, [
-    remoteDomain,
-    remoteTokenKey,
-  ]);
-  const custodyTokenAccount = findProgramAddress("custody", tokenMessengerMinterProgram.programId, [
-    solUsdcAddress,
-  ]);
+  const tokenPair = findProgramAddress(
+    "token_pair",
+    tokenMessengerMinterProgram.programId,
+    [remoteDomain, remoteTokenKey]
+  );
+  const custodyTokenAccount = findProgramAddress(
+    "custody",
+    tokenMessengerMinterProgram.programId,
+    [solUsdcAddress]
+  );
   const authorityPda = findProgramAddress(
     "message_transmitter_authority",
     messageTransmitterProgram.programId,
@@ -193,9 +220,11 @@ export const getReceiveMessagePdas = async (
     "__event_authority",
     tokenMessengerMinterProgram.programId
   );
-  const usedNonce = findProgramAddress("used_nonce", messageTransmitterProgram.programId, [
-    nonce,
-  ]).publicKey;
+  const usedNonce = findProgramAddress(
+    "used_nonce",
+    messageTransmitterProgram.programId,
+    [nonce]
+  ).publicKey;
 
   const tokenMessengerAccounts = await (
     tokenMessengerMinterProgram.account as any
@@ -230,7 +259,8 @@ export const evmAddressToSolana = (evmAddress: string): string =>
 export const evmAddressToBytes32 = (address: string): string =>
   `0x000000000000000000000000${address.replace("0x", "")}`;
 
-export const hexToBytes = (hex: string): Buffer => Buffer.from(hex.replace("0x", ""), "hex");
+export const hexToBytes = (hex: string): Buffer =>
+  Buffer.from(hex.replace("0x", ""), "hex");
 
 // Convenience wrapper for PublicKey.findProgramAddressSync
 export const findProgramAddress = (
@@ -266,7 +296,9 @@ export const getMessages = async (txHash: string) => {
     attestationResponse.messages?.[0]?.attestation === "PENDING"
   ) {
     // Use Circle's official endpoint format (no /v2/)
-    const response = await fetch(`${IRIS_API_URL}/messages/${SOLANA_SRC_DOMAIN_ID}/${txHash}`);
+    const response = await fetch(
+      `${IRIS_API_URL}/messages/${SOLANA_SRC_DOMAIN_ID}/${txHash}`
+    );
     attestationResponse = await response.json();
     // Wait 2 seconds to avoid getting rate limited
     if (
@@ -286,6 +318,9 @@ export const decodeNonceFromMessage = (messageHex: string): Buffer => {
   const nonceIndex = 12;
   const nonceBytesLength = 32;
   const message = hexToBytes(messageHex);
-  const eventNonceBytes = message.subarray(nonceIndex, nonceIndex + nonceBytesLength);
+  const eventNonceBytes = message.subarray(
+    nonceIndex,
+    nonceIndex + nonceBytesLength
+  );
   return eventNonceBytes;
 };
