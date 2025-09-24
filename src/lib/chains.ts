@@ -57,7 +57,7 @@ export const CHAIN_TO_CHAIN_NAME: Record<number, string> = {
   [SupportedChainId.SEI_TESTNET]: "Sei Testnet",
   [SupportedChainId.XDC_TESTNET]: "XDC Testnet",
   [SupportedChainId.PLUME_TESTNET]: "Plume Testnet",
-  [SupportedChainId.HYPEREVM_TESTNET]: "Hyperliquid EVM Testnet",
+  [SupportedChainId.HYPEREVM_TESTNET]: "HyperEvm Testnet",
   [SupportedChainId.INK_TESTNET]: "Ink Testnet",
 };
 
