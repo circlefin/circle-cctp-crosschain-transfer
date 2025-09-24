@@ -35,6 +35,7 @@ export enum SupportedChainId {
   XDC_TESTNET = 51,
   PLUME_TESTNET = 98867,
   HYPEREVM_TESTNET = 998,
+  INK_TESTNET = 763373,
 }
 
 export const DEFAULT_MAX_FEE = 1000n;
@@ -56,7 +57,8 @@ export const CHAIN_TO_CHAIN_NAME: Record<number, string> = {
   [SupportedChainId.SEI_TESTNET]: "Sei Testnet",
   [SupportedChainId.XDC_TESTNET]: "XDC Testnet",
   [SupportedChainId.PLUME_TESTNET]: "Plume Testnet",
-  [SupportedChainId.HYPEREVM_TESTNET]: "HyperEvm Testnet",
+  [SupportedChainId.HYPEREVM_TESTNET]: "Hyperliquid EVM Testnet",
+  [SupportedChainId.INK_TESTNET]: "Ink Testnet",
 };
 
 export const CHAIN_IDS_TO_USDC_ADDRESSES: Record<number, Hex | string> = {
@@ -64,25 +66,19 @@ export const CHAIN_IDS_TO_USDC_ADDRESSES: Record<number, Hex | string> = {
   [SupportedChainId.AVAX_FUJI]: "0x5425890298aed601595a70AB815c96711a31Bc65",
   [SupportedChainId.BASE_SEPOLIA]: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
   [SupportedChainId.SONIC_BLAZE]: "0xA4879Fed32Ecbef99399e5cbC247E533421C4eC6",
-  [SupportedChainId.LINEA_SEPOLIA]:
-    "0xFEce4462D57bD51A6A552365A011b95f0E16d9B7",
-  [SupportedChainId.ARBITRUM_SEPOLIA]:
-    "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
-  [SupportedChainId.WORLDCHAIN_SEPOLIA]:
-    "0x66145f38cBAC35Ca6F1Dfb4914dF98F1614aeA88",
-  [SupportedChainId.OPTIMISM_SEPOLIA]:
-    "0x5fd84259d66Cd46123540766Be93DFE6D43130D7",
-  [SupportedChainId.SOLANA_DEVNET]:
-    "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
-  [SupportedChainId.CODEX_TESTNET]:
-    "0x6d7f141b6819C2c9CC2f818e6ad549E7Ca090F8f",
-  [SupportedChainId.UNICHAIN_SEPOLIA]:
-    "0x31d0220469e10c4E71834a79b1f276d740d3768F",
+  [SupportedChainId.LINEA_SEPOLIA]: "0xFEce4462D57bD51A6A552365A011b95f0E16d9B7",
+  [SupportedChainId.ARBITRUM_SEPOLIA]: "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+  [SupportedChainId.WORLDCHAIN_SEPOLIA]: "0x66145f38cBAC35Ca6F1Dfb4914dF98F1614aeA88",
+  [SupportedChainId.OPTIMISM_SEPOLIA]: "0x5fd84259d66Cd46123540766Be93DFE6D43130D7",
+  [SupportedChainId.SOLANA_DEVNET]: "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+  [SupportedChainId.CODEX_TESTNET]: "0x6d7f141b6819C2c9CC2f818e6ad549E7Ca090F8f",
+  [SupportedChainId.UNICHAIN_SEPOLIA]: "0x31d0220469e10c4E71834a79b1f276d740d3768F",
   [SupportedChainId.POLYGON_AMOY]: "0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582",
   [SupportedChainId.SEI_TESTNET]: "0x4fCF1784B31630811181f670Aea7A7bEF803eaED",
   [SupportedChainId.XDC_TESTNET]: "0xb5AB69F7bBada22B28e79C8FFAECe55eF1c771D4",
   [SupportedChainId.PLUME_TESTNET]: "0xcB5f30e335672893c7eb944B374c196392C19D18",
   [SupportedChainId.HYPEREVM_TESTNET]: "0x2B3370eE501B4a559b57D449569354196457D8Ab",
+  [SupportedChainId.INK_TESTNET]: "0xFabab97dCE620294D2B0b0e46C68964e326300Ac",
 };
 
 export const CHAIN_IDS_TO_TOKEN_MESSENGER: Record<number, Hex | string> = {
@@ -90,26 +86,19 @@ export const CHAIN_IDS_TO_TOKEN_MESSENGER: Record<number, Hex | string> = {
   [SupportedChainId.AVAX_FUJI]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
   [SupportedChainId.BASE_SEPOLIA]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
   [SupportedChainId.SONIC_BLAZE]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
-  [SupportedChainId.LINEA_SEPOLIA]:
-    "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
-  [SupportedChainId.ARBITRUM_SEPOLIA]:
-    "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
-  [SupportedChainId.WORLDCHAIN_SEPOLIA]:
-    "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
-  [SupportedChainId.OPTIMISM_SEPOLIA]:
-    "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
-  [SupportedChainId.SOLANA_DEVNET]:
-    "CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe",
-  [SupportedChainId.CODEX_TESTNET]:
-    "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
-  [SupportedChainId.UNICHAIN_SEPOLIA]:
-    "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
+  [SupportedChainId.LINEA_SEPOLIA]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
+  [SupportedChainId.ARBITRUM_SEPOLIA]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
+  [SupportedChainId.WORLDCHAIN_SEPOLIA]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
+  [SupportedChainId.OPTIMISM_SEPOLIA]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
+  [SupportedChainId.SOLANA_DEVNET]: "CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe",
+  [SupportedChainId.CODEX_TESTNET]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
+  [SupportedChainId.UNICHAIN_SEPOLIA]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
   [SupportedChainId.POLYGON_AMOY]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
   [SupportedChainId.SEI_TESTNET]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
   [SupportedChainId.XDC_TESTNET]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
   [SupportedChainId.PLUME_TESTNET]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
-  [SupportedChainId.HYPEREVM_TESTNET]:
-    "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
+  [SupportedChainId.HYPEREVM_TESTNET]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
+  [SupportedChainId.INK_TESTNET]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
 };
 
 export const CHAIN_IDS_TO_MESSAGE_TRANSMITTER: Record<number, Hex | string> = {
@@ -117,26 +106,19 @@ export const CHAIN_IDS_TO_MESSAGE_TRANSMITTER: Record<number, Hex | string> = {
   [SupportedChainId.AVAX_FUJI]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
   [SupportedChainId.BASE_SEPOLIA]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
   [SupportedChainId.SONIC_BLAZE]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
-  [SupportedChainId.LINEA_SEPOLIA]:
-    "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
-  [SupportedChainId.ARBITRUM_SEPOLIA]:
-    "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
-  [SupportedChainId.WORLDCHAIN_SEPOLIA]:
-    "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
-  [SupportedChainId.OPTIMISM_SEPOLIA]:
-    "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
-  [SupportedChainId.SOLANA_DEVNET]:
-    "CCTPV2Sm4AdWt5296sk4P66VBZ7bEhcARwFaaS9YPbeC",
-  [SupportedChainId.CODEX_TESTNET]:
-    "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
-  [SupportedChainId.UNICHAIN_SEPOLIA]:
-    "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
+  [SupportedChainId.LINEA_SEPOLIA]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
+  [SupportedChainId.ARBITRUM_SEPOLIA]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
+  [SupportedChainId.WORLDCHAIN_SEPOLIA]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
+  [SupportedChainId.OPTIMISM_SEPOLIA]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
+  [SupportedChainId.SOLANA_DEVNET]: "CCTPV2Sm4AdWt5296sk4P66VBZ7bEhcARwFaaS9YPbeC",
+  [SupportedChainId.CODEX_TESTNET]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
+  [SupportedChainId.UNICHAIN_SEPOLIA]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
   [SupportedChainId.POLYGON_AMOY]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
   [SupportedChainId.SEI_TESTNET]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
   [SupportedChainId.XDC_TESTNET]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
   [SupportedChainId.PLUME_TESTNET]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
-  [SupportedChainId.HYPEREVM_TESTNET]:
-    "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
+  [SupportedChainId.HYPEREVM_TESTNET]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
+  [SupportedChainId.INK_TESTNET]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
 };
 
 export const DESTINATION_DOMAINS: Record<number, number> = {
@@ -156,6 +138,7 @@ export const DESTINATION_DOMAINS: Record<number, number> = {
   [SupportedChainId.XDC_TESTNET]: 18,
   [SupportedChainId.PLUME_TESTNET]: 22,
   [SupportedChainId.HYPEREVM_TESTNET]: 19,
+  [SupportedChainId.INK_TESTNET]: 21,
 };
 
 export const SUPPORTED_CHAINS = [
@@ -175,11 +158,11 @@ export const SUPPORTED_CHAINS = [
   SupportedChainId.XDC_TESTNET,
   SupportedChainId.PLUME_TESTNET,
   SupportedChainId.HYPEREVM_TESTNET,
+  SupportedChainId.INK_TESTNET,
 ];
 
 // Solana RPC endpoint
 export const SOLANA_RPC_ENDPOINT = "https://api.devnet.solana.com";
 
 // IRIS API URL for CCTP attestations (testnet)
-export const IRIS_API_URL =
-  process.env.IRIS_API_URL ?? "https://iris-api-sandbox.circle.com";
+export const IRIS_API_URL = process.env.IRIS_API_URL ?? "https://iris-api-sandbox.circle.com";
