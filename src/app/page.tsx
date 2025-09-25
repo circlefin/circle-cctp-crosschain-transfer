@@ -102,7 +102,7 @@ export default function Home() {
       <Card className="max-w-3xl mx-auto">
         <CardHeader>
           <CardTitle className="text-center">
-            Cross-Chain USDC Transfer
+            Crosschain USDC Transfer
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
