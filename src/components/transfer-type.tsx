@@ -30,8 +30,8 @@ export function TransferTypeSelector({
   return (
     <Tabs value={value} onValueChange={(v) => onChange(v as "fast" | "standard")}>
       <TabsList className="grid w-full grid-cols-2">
-        <TabsTrigger value="fast">CCTP</TabsTrigger>
-        <TabsTrigger value="standard">CCTP V1 (Legacy)</TabsTrigger>
+        <TabsTrigger value="fast">Fast Transfer</TabsTrigger>
+        <TabsTrigger value="standard">Standard Transfer</TabsTrigger>
       </TabsList>
     </Tabs>
   );
