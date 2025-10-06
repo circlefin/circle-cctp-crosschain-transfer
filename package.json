@@ -26,7 +26,7 @@
     "ethers": "^6.15.0",
     "lucide-react": "^0.544.0",
     "next": "15.5.4",
-    "react": "^19.1.1",
+    "react": "^19.2.0",
     "react-dom": "^19.1.1",
     "react-timer-hook": "^4.0.5",
     "tailwind-merge": "^3.3.1",
