@@ -2,6 +2,7 @@
 
 This sample application demonstrates Cross-Chain Transfer Protocol (CCTP) step-by-step capabilities on testnet networks. The app showcases CCTP functionality across multiple testnets:
 
+- Arc Testnet
 - Ethereum Sepolia
 - Avalanche Fuji C-Chain
 - Base Sepolia

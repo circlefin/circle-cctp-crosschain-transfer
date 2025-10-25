@@ -19,6 +19,7 @@
 import type { Hex } from "viem";
 
 export enum SupportedChainId {
+  ARC_TESTNET = 5042002,
   ETH_SEPOLIA = 11155111,
   AVAX_FUJI = 43113,
   BASE_SEPOLIA = 84532,
@@ -42,6 +43,7 @@ export const DEFAULT_MAX_FEE = 1000n;
 export const DEFAULT_FINALITY_THRESHOLD = 2000;
 
 export const CHAIN_TO_CHAIN_NAME: Record<number, string> = {
+  [SupportedChainId.ARC_TESTNET]: "Arc Testnet",
   [SupportedChainId.ETH_SEPOLIA]: "Ethereum Sepolia",
   [SupportedChainId.AVAX_FUJI]: "Avalanche Fuji",
   [SupportedChainId.BASE_SEPOLIA]: "Base Sepolia",
@@ -62,6 +64,7 @@ export const CHAIN_TO_CHAIN_NAME: Record<number, string> = {
 };
 
 export const CHAIN_IDS_TO_USDC_ADDRESSES: Record<number, Hex | string> = {
+  [SupportedChainId.ARC_TESTNET]: "0x3600000000000000000000000000000000000000",
   [SupportedChainId.ETH_SEPOLIA]: "0x1c7d4b196cb0c7b01d743fbc6116a902379c7238",
   [SupportedChainId.AVAX_FUJI]: "0x5425890298aed601595a70AB815c96711a31Bc65",
   [SupportedChainId.BASE_SEPOLIA]: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
@@ -82,6 +85,7 @@ export const CHAIN_IDS_TO_USDC_ADDRESSES: Record<number, Hex | string> = {
 };
 
 export const CHAIN_IDS_TO_TOKEN_MESSENGER: Record<number, Hex | string> = {
+  [SupportedChainId.ARC_TESTNET]: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
   [SupportedChainId.ETH_SEPOLIA]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
   [SupportedChainId.AVAX_FUJI]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
   [SupportedChainId.BASE_SEPOLIA]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
@@ -102,6 +106,7 @@ export const CHAIN_IDS_TO_TOKEN_MESSENGER: Record<number, Hex | string> = {
 };
 
 export const CHAIN_IDS_TO_MESSAGE_TRANSMITTER: Record<number, Hex | string> = {
+  [SupportedChainId.ARC_TESTNET]: "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
   [SupportedChainId.ETH_SEPOLIA]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
   [SupportedChainId.AVAX_FUJI]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
   [SupportedChainId.BASE_SEPOLIA]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
@@ -122,6 +127,7 @@ export const CHAIN_IDS_TO_MESSAGE_TRANSMITTER: Record<number, Hex | string> = {
 };
 
 export const DESTINATION_DOMAINS: Record<number, number> = {
+  [SupportedChainId.ARC_TESTNET]: 26,
   [SupportedChainId.ETH_SEPOLIA]: 0,
   [SupportedChainId.AVAX_FUJI]: 1,
   [SupportedChainId.BASE_SEPOLIA]: 6,
@@ -142,6 +148,7 @@ export const DESTINATION_DOMAINS: Record<number, number> = {
 };
 
 export const SUPPORTED_CHAINS = [
+  SupportedChainId.ARC_TESTNET,
   SupportedChainId.ETH_SEPOLIA,
   SupportedChainId.AVAX_FUJI,
   SupportedChainId.BASE_SEPOLIA,

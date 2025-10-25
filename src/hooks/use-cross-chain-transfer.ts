@@ -85,6 +85,29 @@ import { getBytes } from "ethers";
 import { SystemProgram } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
+// Custom Arc Testnet configuration
+const arcTestnet = defineChain({
+  id: 5042002,
+  name: "Arc Testnet",
+  nativeCurrency: {
+    decimals: 18,
+    name: "Arc",
+    symbol: "ARC",
+  },
+  rpcUrls: {
+    default: {
+      http: ["https://arc-testnet.stg.blockchain.circle.com"],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: "Arc Testnet Explorer",
+      url: "https://arc-testnet-explorer.stg.blockchain.circle.com",
+    },
+  },
+  testnet: true,
+});
+
 // Custom Codex chain definition with Thirdweb RPC
 const codexTestnet = defineChain({
   id: 812242,
@@ -118,6 +141,7 @@ export type TransferStep =
   | "error";
 
 const chains = {
+  [SupportedChainId.ARC_TESTNET]: arcTestnet,
   [SupportedChainId.ETH_SEPOLIA]: sepolia,
   [SupportedChainId.AVAX_FUJI]: avalancheFuji,
   [SupportedChainId.BASE_SEPOLIA]: baseSepolia,
