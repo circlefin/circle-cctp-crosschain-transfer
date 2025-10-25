@@ -16,7 +16,7 @@ This sample application demonstrates Cross-Chain Transfer Protocol (CCTP) step-b
 - Polygon PoS Amoy
 - Sei Testnet
 - XDC Testnet
-- Plume Testnet
+- Plume Sepolia
 - HyperEVM Testnet
 - Ink Sepolia
 

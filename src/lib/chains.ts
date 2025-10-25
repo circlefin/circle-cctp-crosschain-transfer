@@ -33,7 +33,7 @@ export enum SupportedChainId {
   POLYGON_AMOY = 80002,
   SEI_TESTNET = 1328,
   XDC_TESTNET = 51,
-  PLUME_TESTNET = 98867,
+  PLUME_SEPOLIA = 98867,
   HYPEREVM_TESTNET = 998,
   INK_SEPOLIA = 763373,
 }
@@ -56,7 +56,7 @@ export const CHAIN_TO_CHAIN_NAME: Record<number, string> = {
   [SupportedChainId.POLYGON_AMOY]: "Polygon Amoy",
   [SupportedChainId.SEI_TESTNET]: "Sei Testnet",
   [SupportedChainId.XDC_TESTNET]: "XDC Testnet",
-  [SupportedChainId.PLUME_TESTNET]: "Plume Testnet",
+  [SupportedChainId.PLUME_SEPOLIA]: "Plume Sepolia",
   [SupportedChainId.HYPEREVM_TESTNET]: "HyperEvm Testnet",
   [SupportedChainId.INK_SEPOLIA]: "Ink Sepolia",
 };
@@ -76,7 +76,7 @@ export const CHAIN_IDS_TO_USDC_ADDRESSES: Record<number, Hex | string> = {
   [SupportedChainId.POLYGON_AMOY]: "0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582",
   [SupportedChainId.SEI_TESTNET]: "0x4fCF1784B31630811181f670Aea7A7bEF803eaED",
   [SupportedChainId.XDC_TESTNET]: "0xb5AB69F7bBada22B28e79C8FFAECe55eF1c771D4",
-  [SupportedChainId.PLUME_TESTNET]: "0xcB5f30e335672893c7eb944B374c196392C19D18",
+  [SupportedChainId.PLUME_SEPOLIA]: "0xcB5f30e335672893c7eb944B374c196392C19D18",
   [SupportedChainId.HYPEREVM_TESTNET]: "0x2B3370eE501B4a559b57D449569354196457D8Ab",
   [SupportedChainId.INK_SEPOLIA]: "0xFabab97dCE620294D2B0b0e46C68964e326300Ac",
 };
@@ -96,7 +96,7 @@ export const CHAIN_IDS_TO_TOKEN_MESSENGER: Record<number, Hex | string> = {
   [SupportedChainId.POLYGON_AMOY]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
   [SupportedChainId.SEI_TESTNET]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
   [SupportedChainId.XDC_TESTNET]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
-  [SupportedChainId.PLUME_TESTNET]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
+  [SupportedChainId.PLUME_SEPOLIA]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
   [SupportedChainId.HYPEREVM_TESTNET]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
   [SupportedChainId.INK_SEPOLIA]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
 };
@@ -116,7 +116,7 @@ export const CHAIN_IDS_TO_MESSAGE_TRANSMITTER: Record<number, Hex | string> = {
   [SupportedChainId.POLYGON_AMOY]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
   [SupportedChainId.SEI_TESTNET]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
   [SupportedChainId.XDC_TESTNET]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
-  [SupportedChainId.PLUME_TESTNET]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
+  [SupportedChainId.PLUME_SEPOLIA]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
   [SupportedChainId.HYPEREVM_TESTNET]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
   [SupportedChainId.INK_SEPOLIA]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
 };
@@ -136,7 +136,7 @@ export const DESTINATION_DOMAINS: Record<number, number> = {
   [SupportedChainId.POLYGON_AMOY]: 7,
   [SupportedChainId.SEI_TESTNET]: 16,
   [SupportedChainId.XDC_TESTNET]: 18,
-  [SupportedChainId.PLUME_TESTNET]: 22,
+  [SupportedChainId.PLUME_SEPOLIA]: 22,
   [SupportedChainId.HYPEREVM_TESTNET]: 19,
   [SupportedChainId.INK_SEPOLIA]: 21,
 };
@@ -156,7 +156,7 @@ export const SUPPORTED_CHAINS = [
   SupportedChainId.POLYGON_AMOY,
   SupportedChainId.SEI_TESTNET,
   SupportedChainId.XDC_TESTNET,
-  SupportedChainId.PLUME_TESTNET,
+  SupportedChainId.PLUME_SEPOLIA,
   SupportedChainId.HYPEREVM_TESTNET,
   SupportedChainId.INK_SEPOLIA,
 ];
