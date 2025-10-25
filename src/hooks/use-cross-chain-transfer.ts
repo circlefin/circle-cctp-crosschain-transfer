@@ -96,13 +96,13 @@ const arcTestnet = defineChain({
   },
   rpcUrls: {
     default: {
-      http: ["https://arc-testnet.stg.blockchain.circle.com"],
+      http: ["https://rpc.testnet.arc.network"],
     },
   },
   blockExplorers: {
     default: {
       name: "Arc Testnet Explorer",
-      url: "https://arc-testnet-explorer.stg.blockchain.circle.com",
+      url: "https://rpc.blockdaemon.testnet.arc.network",
     },
   },
   testnet: true,
