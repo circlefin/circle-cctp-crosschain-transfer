@@ -48,7 +48,7 @@ cp .env.example .env.local
    ```
 2. Install dependencies.
    ```bash
-   npm run dev
+   npm install
    ```
 3. Run the development server.
    ```bash
