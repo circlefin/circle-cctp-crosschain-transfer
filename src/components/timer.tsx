@@ -18,7 +18,7 @@
 
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from "react";
 
 interface TimerProps {
   isRunning: boolean;
@@ -27,25 +27,27 @@ interface TimerProps {
 }
 
 export function Timer({ isRunning, onTick }: TimerProps) {
-  const [startTime, setStartTime] = useState<number | null>(null);
+  const startTimeRef = useRef<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const animationRef = useRef<number | undefined>(undefined);
   const onTickRef = useRef(onTick);
-  onTickRef.current = onTick;
+  useEffect(() => {
+    onTickRef.current = onTick;
+  }, [onTick]);
 
   useEffect(() => {
-    if (isRunning && startTime === null) {
-      setStartTime(Date.now());
-    } else if (!isRunning && startTime !== null) {
-      setStartTime(null);
+    if (isRunning && startTimeRef.current === null) {
+      startTimeRef.current = Date.now();
+    } else if (!isRunning && startTimeRef.current !== null) {
+      startTimeRef.current = null;
     }
-  }, [isRunning, startTime]);
+  }, [isRunning]);
 
   useEffect(() => {
     const animate = () => {
-      if (startTime) {
+      if (startTimeRef.current !== null) {
         const now = Date.now();
-        const newElapsed = Math.floor((now - startTime) / 1000);
+        const newElapsed = Math.floor((now - startTimeRef.current) / 1000);
         setElapsed(newElapsed);
         onTickRef.current?.(newElapsed);
       }
@@ -61,15 +63,14 @@ export function Timer({ isRunning, onTick }: TimerProps) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isRunning, startTime]);
+  }, [isRunning]);
 
   const minutes = Math.floor(elapsed / 60);
   const seconds = elapsed % 60;
 
   return (
     <div className="text-2xl font-mono">
-      <span>{minutes.toString().padStart(2, '0')}</span>:
-      <span>{seconds.toString().padStart(2, '0')}</span>
+      <span>{minutes.toString().padStart(2, "0")}</span>:<span>{seconds.toString().padStart(2, "0")}</span>
     </div>
   );
 }
