@@ -16,7 +16,7 @@ This sample application demonstrates Cross-Chain Transfer Protocol (CCTP) step-b
 - Polygon PoS Amoy
 - Sei Testnet
 - XDC Testnet
-- Plume Testnet
+- Plume Sepolia
 - HyperEVM Testnet
 - Ink Sepolia
 
@@ -24,9 +24,9 @@ This sample application demonstrates Cross-Chain Transfer Protocol (CCTP) step-b
 
 1. Copy the `.env.example` file to `.env.local`:
 
-```bash
-cp .env.example .env.local
-```
+      ```bash
+      cp .env.example .env.local
+      ```
 
 2. Update the `.env.local` file with your configuration:
 
@@ -48,7 +48,7 @@ cp .env.example .env.local
    ```
 2. Install dependencies.
    ```bash
-   npm run dev
+   npm install
    ```
 3. Run the development server.
    ```bash

@@ -51,25 +51,9 @@ import {
   xdcTestnet,
   hyperliquidEvmTestnet,
   inkSepolia,
+  plumeSepolia
 } from "viem/chains";
 import { defineChain } from "viem";
-
-// Custom Plume Testnet configuration
-const plumeTestnet = defineChain({
-  id: 98867,
-  name: "Plume Testnet",
-  nativeCurrency: { name: "PLUME", symbol: "PLUME", decimals: 18 },
-  rpcUrls: {
-    default: { http: ["https://testnet-rpc.plume.org"] },
-  },
-  blockExplorers: {
-    default: {
-      name: "Plume Testnet Explorer",
-      url: "https://testnet-explorer.plume.org",
-    },
-  },
-  testnet: true,
-});
 
 // Solana imports
 import {
@@ -146,7 +130,7 @@ const chains = {
   [SupportedChainId.UNICHAIN_SEPOLIA]: unichainSepolia,
   [SupportedChainId.POLYGON_AMOY]: polygonAmoy,
   [SupportedChainId.SEI_TESTNET]: seiTestnet,
-  [SupportedChainId.PLUME_TESTNET]: plumeTestnet,
+  [SupportedChainId.PLUME_SEPOLIA]: plumeSepolia,
   [SupportedChainId.XDC_TESTNET]: xdcTestnet,
   [SupportedChainId.HYPEREVM_TESTNET]: hyperliquidEvmTestnet,
   [SupportedChainId.INK_SEPOLIA]: inkSepolia,
