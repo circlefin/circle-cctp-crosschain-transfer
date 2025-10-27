@@ -34,7 +34,7 @@
     "viem": "^2.38.4"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.1.16",
+    "@tailwindcss/postcss": "^4.1.13",
     "@types/node": "^24",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -43,7 +43,7 @@
     "eslint": "^9.38.0",
     "eslint-config-next": "^16.0.0",
     "postcss": "^8",
-    "tailwindcss": "^4.1.16",
+    "tailwindcss": "^4.1.13",
     "typescript": "^5"
   }
 }
