@@ -40,7 +40,6 @@ import {
   sepolia,
   avalancheFuji,
   baseSepolia,
-  // sonicTestnet,
   lineaSepolia,
   arbitrumSepolia,
   worldchainSepolia,
