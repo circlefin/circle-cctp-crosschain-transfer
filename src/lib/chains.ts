@@ -150,7 +150,6 @@ export const DESTINATION_DOMAINS: Record<number, number> = {
 export const SUPPORTED_CHAINS = [
   SupportedChainId.ARC_TESTNET,
   SupportedChainId.ETH_SEPOLIA,
-  SupportedChainId.ARC_TESTNET,
   SupportedChainId.AVAX_FUJI,
   SupportedChainId.BASE_SEPOLIA,
   SupportedChainId.SONIC_BLAZE,

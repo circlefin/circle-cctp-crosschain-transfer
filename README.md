@@ -4,7 +4,6 @@ This sample application demonstrates Cross-Chain Transfer Protocol (CCTP) step-b
 
 - Arc Testnet
 - Ethereum Sepolia
-- Arc Testnet
 - Avalanche Fuji C-Chain
 - Base Sepolia
 - Linea Sepolia
