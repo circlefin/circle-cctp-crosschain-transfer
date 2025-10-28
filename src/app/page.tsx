@@ -46,10 +46,10 @@ export default function Home() {
   const { currentStep, logs, error, executeTransfer, getBalance, reset } =
     useCrossChainTransfer();
   const [sourceChain, setSourceChain] = useState<SupportedChainId>(
-    SupportedChainId.ETH_SEPOLIA,
+    SupportedChainId.ARC_TESTNET,
   );
   const [destinationChain, setDestinationChain] = useState<SupportedChainId>(
-    SupportedChainId.AVAX_FUJI,
+    SupportedChainId.ETH_SEPOLIA,
   );
   const [amount, setAmount] = useState("");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
