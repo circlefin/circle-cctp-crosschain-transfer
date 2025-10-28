@@ -40,7 +40,6 @@ import {
   sepolia,
   avalancheFuji,
   baseSepolia,
-  sonicBlazeTestnet,
   lineaSepolia,
   arbitrumSepolia,
   worldchainSepolia,
@@ -108,7 +107,30 @@ const arcTestnet = defineChain({
   testnet: true,
 });
 
-// Custom Codex chain definition with Thirdweb RPC
+// Custom Sonic Testnet configuration
+const sonicTestnet = defineChain({
+  id: 14601,
+  name: "Sonic Testnet",
+  nativeCurrency: {
+    decimals: 18,
+    name: "Sonic",
+    symbol: "S",
+  },
+  rpcUrls: {
+    default: {
+      http: ["https://rpc.testnet.soniclabs.com"],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: "Sonic Testnet Explorer",
+      url: "https://testnet.soniclabs.com/",
+    },
+  },
+  testnet: true,
+});
+
+// Custom Codex Testnet configuration
 const codexTestnet = defineChain({
   id: 812242,
   name: "Codex Testnet",
@@ -145,7 +167,7 @@ const chains = {
   [SupportedChainId.ARC_TESTNET]: arcTestnet,
   [SupportedChainId.AVAX_FUJI]: avalancheFuji,
   [SupportedChainId.BASE_SEPOLIA]: baseSepolia,
-  [SupportedChainId.SONIC_BLAZE]: sonicBlazeTestnet,
+  [SupportedChainId.SONIC_TESTNET]: sonicTestnet,
   [SupportedChainId.LINEA_SEPOLIA]: lineaSepolia,
   [SupportedChainId.ARBITRUM_SEPOLIA]: arbitrumSepolia,
   [SupportedChainId.WORLDCHAIN_SEPOLIA]: worldchainSepolia,
