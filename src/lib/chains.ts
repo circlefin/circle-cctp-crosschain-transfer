@@ -20,6 +20,7 @@ import type { Hex } from "viem";
 
 export enum SupportedChainId {
   ETH_SEPOLIA = 11155111,
+  ARC_TESTNET = 5042002,
   AVAX_FUJI = 43113,
   BASE_SEPOLIA = 84532,
   SONIC_BLAZE = 57054,
@@ -43,6 +44,7 @@ export const DEFAULT_FINALITY_THRESHOLD = 2000;
 
 export const CHAIN_TO_CHAIN_NAME: Record<number, string> = {
   [SupportedChainId.ETH_SEPOLIA]: "Ethereum Sepolia",
+  [SupportedChainId.ARC_TESTNET]: "Arc Testnet",
   [SupportedChainId.AVAX_FUJI]: "Avalanche Fuji",
   [SupportedChainId.BASE_SEPOLIA]: "Base Sepolia",
   [SupportedChainId.SONIC_BLAZE]: "Sonic Blaze",
@@ -63,6 +65,7 @@ export const CHAIN_TO_CHAIN_NAME: Record<number, string> = {
 
 export const CHAIN_IDS_TO_USDC_ADDRESSES: Record<number, Hex | string> = {
   [SupportedChainId.ETH_SEPOLIA]: "0x1c7d4b196cb0c7b01d743fbc6116a902379c7238",
+  [SupportedChainId.ARC_TESTNET]: "0x3600000000000000000000000000000000000000",
   [SupportedChainId.AVAX_FUJI]: "0x5425890298aed601595a70AB815c96711a31Bc65",
   [SupportedChainId.BASE_SEPOLIA]: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
   [SupportedChainId.SONIC_BLAZE]: "0xA4879Fed32Ecbef99399e5cbC247E533421C4eC6",
@@ -83,6 +86,7 @@ export const CHAIN_IDS_TO_USDC_ADDRESSES: Record<number, Hex | string> = {
 
 export const CHAIN_IDS_TO_TOKEN_MESSENGER: Record<number, Hex | string> = {
   [SupportedChainId.ETH_SEPOLIA]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
+  [SupportedChainId.ARC_TESTNET]: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
   [SupportedChainId.AVAX_FUJI]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
   [SupportedChainId.BASE_SEPOLIA]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
   [SupportedChainId.SONIC_BLAZE]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
@@ -103,6 +107,7 @@ export const CHAIN_IDS_TO_TOKEN_MESSENGER: Record<number, Hex | string> = {
 
 export const CHAIN_IDS_TO_MESSAGE_TRANSMITTER: Record<number, Hex | string> = {
   [SupportedChainId.ETH_SEPOLIA]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
+  [SupportedChainId.ARC_TESTNET]: "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
   [SupportedChainId.AVAX_FUJI]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
   [SupportedChainId.BASE_SEPOLIA]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
   [SupportedChainId.SONIC_BLAZE]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
@@ -123,6 +128,7 @@ export const CHAIN_IDS_TO_MESSAGE_TRANSMITTER: Record<number, Hex | string> = {
 
 export const DESTINATION_DOMAINS: Record<number, number> = {
   [SupportedChainId.ETH_SEPOLIA]: 0,
+  [SupportedChainId.ARC_TESTNET]: 26,
   [SupportedChainId.AVAX_FUJI]: 1,
   [SupportedChainId.BASE_SEPOLIA]: 6,
   [SupportedChainId.SONIC_BLAZE]: 13,
@@ -143,6 +149,7 @@ export const DESTINATION_DOMAINS: Record<number, number> = {
 
 export const SUPPORTED_CHAINS = [
   SupportedChainId.ETH_SEPOLIA,
+  SupportedChainId.ARC_TESTNET,
   SupportedChainId.AVAX_FUJI,
   SupportedChainId.BASE_SEPOLIA,
   SupportedChainId.SONIC_BLAZE,
