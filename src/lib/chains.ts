@@ -37,6 +37,7 @@ export enum SupportedChainId {
   PLUME_SEPOLIA = 98867,
   HYPEREVM_TESTNET = 998,
   INK_SEPOLIA = 763373,
+  MONAD_TESTNET = 10143,
 }
 
 export const DEFAULT_MAX_FEE = 1000n;
@@ -61,6 +62,7 @@ export const CHAIN_TO_CHAIN_NAME: Record<number, string> = {
   [SupportedChainId.PLUME_SEPOLIA]: "Plume Sepolia",
   [SupportedChainId.HYPEREVM_TESTNET]: "HyperEvm Testnet",
   [SupportedChainId.INK_SEPOLIA]: "Ink Sepolia",
+  [SupportedChainId.MONAD_TESTNET]: "Monad Testnet",
 };
 
 export const CHAIN_IDS_TO_USDC_ADDRESSES: Record<number, Hex | string> = {
@@ -82,6 +84,7 @@ export const CHAIN_IDS_TO_USDC_ADDRESSES: Record<number, Hex | string> = {
   [SupportedChainId.PLUME_SEPOLIA]: "0xcB5f30e335672893c7eb944B374c196392C19D18",
   [SupportedChainId.HYPEREVM_TESTNET]: "0x2B3370eE501B4a559b57D449569354196457D8Ab",
   [SupportedChainId.INK_SEPOLIA]: "0xFabab97dCE620294D2B0b0e46C68964e326300Ac",
+  [SupportedChainId.MONAD_TESTNET]: "0x534b2f3A21130d7a60830c2Df862319e593943A3",
 };
 
 export const CHAIN_IDS_TO_TOKEN_MESSENGER: Record<number, Hex | string> = {
@@ -103,6 +106,7 @@ export const CHAIN_IDS_TO_TOKEN_MESSENGER: Record<number, Hex | string> = {
   [SupportedChainId.PLUME_SEPOLIA]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
   [SupportedChainId.HYPEREVM_TESTNET]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
   [SupportedChainId.INK_SEPOLIA]: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
+  [SupportedChainId.MONAD_TESTNET]: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
 };
 
 export const CHAIN_IDS_TO_MESSAGE_TRANSMITTER: Record<number, Hex | string> = {
@@ -124,6 +128,7 @@ export const CHAIN_IDS_TO_MESSAGE_TRANSMITTER: Record<number, Hex | string> = {
   [SupportedChainId.PLUME_SEPOLIA]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
   [SupportedChainId.HYPEREVM_TESTNET]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
   [SupportedChainId.INK_SEPOLIA]: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
+  [SupportedChainId.MONAD_TESTNET]: "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
 };
 
 export const DESTINATION_DOMAINS: Record<number, number> = {
@@ -145,6 +150,7 @@ export const DESTINATION_DOMAINS: Record<number, number> = {
   [SupportedChainId.PLUME_SEPOLIA]: 22,
   [SupportedChainId.HYPEREVM_TESTNET]: 19,
   [SupportedChainId.INK_SEPOLIA]: 21,
+  [SupportedChainId.MONAD_TESTNET]: 15,
 };
 
 export const SUPPORTED_CHAINS = [
@@ -166,6 +172,7 @@ export const SUPPORTED_CHAINS = [
   SupportedChainId.PLUME_SEPOLIA,
   SupportedChainId.HYPEREVM_TESTNET,
   SupportedChainId.INK_SEPOLIA,
+  SupportedChainId.MONAD_TESTNET,
 ];
 
 // Solana RPC endpoint
