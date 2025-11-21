@@ -50,7 +50,8 @@ import {
   xdcTestnet,
   hyperliquidEvmTestnet,
   inkSepolia,
-  plumeSepolia
+  plumeSepolia,
+  arcTestnet
 } from "viem/chains";
 import { defineChain } from "viem";
 
@@ -83,29 +84,6 @@ import {
 import { getBytes } from "ethers";
 import { SystemProgram } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
-
-// Custom Arc Testnet configuration
-const arcTestnet = defineChain({
-  id: 5042002,
-  name: "Arc Testnet",
-  nativeCurrency: {
-    decimals: 18,
-    name: "USDC",
-    symbol: "USDC",
-  },
-  rpcUrls: {
-    default: {
-      http: ["https://rpc.testnet.arc.network"],
-    },
-  },
-  blockExplorers: {
-    default: {
-      name: "Arc Testnet Explorer",
-      url: "https://testnet.arcscan.app/",
-    },
-  },
-  testnet: true,
-});
 
 // Custom Sonic Testnet configuration
 const sonicTestnet = defineChain({
@@ -153,6 +131,29 @@ const codexTestnet = defineChain({
   testnet: true,
 });
 
+// Monad Testnet configuration
+const monadTestnet = defineChain({
+  id: 10143,
+  name: "Monad Testnet",
+  nativeCurrency: {
+    decimals: 18,
+    name: "MON",
+    symbol: "MON",
+  },
+  rpcUrls: {
+    default: {
+      http: ["https://testnet-rpc.monad.xyz"],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: "Monad Explorer",
+      url: "https://testnet.monadexplorer.com",
+    },
+  },
+  testnet: true,
+});
+
 export type TransferStep =
   | "idle"
   | "approving"
@@ -180,6 +181,7 @@ const chains = {
   [SupportedChainId.XDC_TESTNET]: xdcTestnet,
   [SupportedChainId.HYPEREVM_TESTNET]: hyperliquidEvmTestnet,
   [SupportedChainId.INK_SEPOLIA]: inkSepolia,
+  [SupportedChainId.MONAD_TESTNET]: monadTestnet,
 };
 
 export function useCrossChainTransfer() {
