@@ -20,6 +20,7 @@ This sample application demonstrates Cross-Chain Transfer Protocol (CCTP) step-b
 - Plume Sepolia
 - HyperEVM Testnet
 - Ink Sepolia
+- Monad Testnet
 
 ## Environment Setup
 

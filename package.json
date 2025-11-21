@@ -45,5 +45,8 @@
     "postcss": "^8",
     "tailwindcss": "^4.1.16",
     "typescript": "^5"
+  },
+  "overrides": {
+    "bigint-buffer": "npm:@trufflesuite/bigint-buffer@1.1.10"
   }
 }
