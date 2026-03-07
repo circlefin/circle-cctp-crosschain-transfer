@@ -32,7 +32,7 @@ import {
   parseUnits,
   createPublicClient,
   formatUnits,
-  parseEther,
+
   toHex,
   hexToBytes,
 } from "viem";
@@ -43,7 +43,6 @@ import {
   Keypair,
   PublicKey,
   SystemProgram,
-  LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
 import {
   getAssociatedTokenAddress,
@@ -86,8 +85,6 @@ const ATTESTATION_POLL_INTERVAL_MS = 5000;
 const MINT_MAX_RETRIES = 3;
 const MINT_RETRY_BASE_DELAY_MS = 2000;
 const GAS_BUFFER_PERCENT = 120n;
-const MIN_NATIVE_BALANCE_ETH = "0.01";
-const MIN_NATIVE_BALANCE_SOL = 0.01;
 const BYTES32_ZERO = "0x0000000000000000000000000000000000000000000000000000000000000000" as Hex;
 
 export function useCrossChainTransfer() {
@@ -159,16 +156,6 @@ export function useCrossChainTransfer() {
 
       // Step 3: Retrieve attestation
       const attestation = await retrieveAttestation(burnTx, sourceChainId);
-
-      // Verify destination has enough native token for gas
-      const minBalance = isSolanaChain(destinationChainId)
-        ? BigInt(MIN_NATIVE_BALANCE_SOL * LAMPORTS_PER_SOL)
-        : parseEther(MIN_NATIVE_BALANCE_ETH);
-
-      const balance = await checkNativeBalance(destinationChainId);
-      if (balance < minBalance) {
-        throw new Error("Insufficient native token for gas fees");
-      }
 
       // Step 4: Mint
       if (isDestinationSolana) {
@@ -250,7 +237,7 @@ export function useCrossChainTransfer() {
 
     try {
       const finalityThreshold = transferType === "fast" ? FAST_FINALITY_THRESHOLD : STANDARD_FINALITY_THRESHOLD;
-      const maxFee = amount - 1n;
+      const maxFee = amount > 0n ? amount - 1n : 0n;
 
       let mintRecipient: string;
       if (isSolanaChain(destinationChainId)) {
@@ -386,7 +373,7 @@ export function useCrossChainTransfer() {
           amount: new BN(amount.toString()),
           destinationDomain: CHAIN_CONFIGS[destinationChainId as SupportedChainId].destinationDomain,
           mintRecipient,
-          maxFee: new BN((amount - 1n).toString()),
+          maxFee: new BN((amount > 0n ? amount - 1n : 0n).toString()),
           minFinalityThreshold: transferType === "fast" ? FAST_FINALITY_THRESHOLD : STANDARD_FINALITY_THRESHOLD,
           destinationCaller,
         })
@@ -752,28 +739,7 @@ export function useCrossChainTransfer() {
     return formattedBalance;
   };
 
-  const checkNativeBalance = async (chainId: SupportedChainId) => {
-    if (isSolanaChain(chainId)) {
-      const connection = getSolanaConnection();
-      const privateKey = getPrivateKeyForChain(chainId);
-      const keypair = getSolanaKeypair(privateKey);
-      const balance = await connection.getBalance(keypair.publicKey);
-      return BigInt(balance);
-    } else {
-      const publicClient = createPublicClient({
-        chain: CHAIN_CONFIGS[chainId as SupportedChainId].viemChain,
-        transport: http(),
-      });
-      const privateKey = getPrivateKeyForChain(chainId);
-      const account = privateKeyToAccount(
-        `0x${privateKey.replace(/^0x/, "")}`
-      );
-      const balance = await publicClient.getBalance({
-        address: account.address,
-      });
-      return balance;
-    }
-  };
+
 
   const getClients = (chainId: SupportedChainId) => {
     const privateKey = getPrivateKeyForChain(chainId);

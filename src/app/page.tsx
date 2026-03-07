@@ -201,7 +201,7 @@ export default function Home() {
           <div className="flex justify-center gap-4">
             <Button
               onClick={handleStartTransfer}
-              disabled={isTransferring || currentStep === "completed"}
+              disabled={isTransferring || currentStep === "completed" || !amount || parseFloat(amount) <= 0}
             >
               {currentStep === "completed"
                 ? "Transfer Complete"
