@@ -340,7 +340,8 @@ export function useCrossChainTransfer() {
       const pdas = getDepositForBurnPdas(
         { messageTransmitterProgram, tokenMessengerMinterProgram },
         usdcMint,
-        CHAIN_CONFIGS[destinationChainId as SupportedChainId].destinationDomain
+        CHAIN_CONFIGS[destinationChainId as SupportedChainId].destinationDomain,
+        keypair.publicKey
       );
 
       const messageSentEventAccountKeypair = Keypair.generate();
@@ -394,6 +395,7 @@ export function useCrossChainTransfer() {
           eventRentPayer: keypair.publicKey,
           senderAuthorityPda: pdas.authorityPda.publicKey,
           burnTokenAccount: userTokenAccount,
+          denylistAccount: pdas.denylistAccount.publicKey,
           messageTransmitter: pdas.messageTransmitterAccount.publicKey,
           tokenMessenger: pdas.tokenMessengerAccount.publicKey,
           remoteTokenMessenger: pdas.remoteTokenMessengerKey.publicKey,
@@ -405,6 +407,8 @@ export function useCrossChainTransfer() {
           tokenMessengerMinterProgram: tokenMessengerMinterProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
+          eventAuthority: pdas.eventAuthority.publicKey,
+          program: tokenMessengerMinterProgram.programId,
         })
         .signers([messageSentEventAccountKeypair])
         .rpc();
@@ -651,6 +655,8 @@ export function useCrossChainTransfer() {
           usedNonce: pdas.usedNonce,
           receiver: tokenMessengerMinterProgram.programId,
           systemProgram: SystemProgram.programId,
+          eventAuthority: pdas.messageTransmitterEventAuthority.publicKey,
+          program: messageTransmitterProgram.programId,
         })
         .remainingAccounts(accountMetas)
         .signers([keypair])

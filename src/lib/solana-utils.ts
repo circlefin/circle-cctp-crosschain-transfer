@@ -114,7 +114,8 @@ export const getDepositForBurnPdas = (
     tokenMessengerMinterProgram,
   }: ReturnType<typeof getPrograms>,
   usdcAddress: PublicKey,
-  destinationDomain: number
+  destinationDomain: number,
+  owner: PublicKey
 ) => {
   const messageTransmitterAccount = findProgramAddress(
     "message_transmitter",
@@ -142,6 +143,15 @@ export const getDepositForBurnPdas = (
     "sender_authority",
     tokenMessengerMinterProgram.programId
   );
+  const denylistAccount = findProgramAddress(
+    "denylist_account",
+    tokenMessengerMinterProgram.programId,
+    [owner]
+  );
+  const eventAuthority = findProgramAddress(
+    "__event_authority",
+    tokenMessengerMinterProgram.programId
+  );
 
   return {
     messageTransmitterAccount,
@@ -150,6 +160,8 @@ export const getDepositForBurnPdas = (
     localToken,
     remoteTokenMessengerKey,
     authorityPda,
+    denylistAccount,
+    eventAuthority,
   };
 };
 
@@ -205,6 +217,10 @@ export const getReceiveMessagePdas = async (
     "__event_authority",
     tokenMessengerMinterProgram.programId
   );
+  const messageTransmitterEventAuthority = findProgramAddress(
+    "__event_authority",
+    messageTransmitterProgram.programId
+  );
   const usedNonce = findProgramAddress(
     "used_nonce",
     messageTransmitterProgram.programId,
@@ -230,6 +246,7 @@ export const getReceiveMessagePdas = async (
     custodyTokenAccount,
     authorityPda,
     tokenMessengerEventAuthority,
+    messageTransmitterEventAuthority,
     usedNonce,
     feeRecipientTokenAccount,
   };
