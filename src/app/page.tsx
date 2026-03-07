@@ -189,7 +189,6 @@ export default function Home() {
             ) : (
               <Timer
                 isRunning={isTransferring}
-                initialSeconds={elapsedSeconds}
                 onTick={setElapsedSeconds}
               />
             )}
