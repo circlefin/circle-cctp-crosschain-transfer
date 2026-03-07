@@ -23,7 +23,7 @@ import {
   Transaction,
   VersionedTransaction,
 } from "@solana/web3.js";
-import { hexlify } from "ethers";
+import { toHex } from "viem";
 import bs58 from "bs58";
 import { getAssociatedTokenAddress } from "@solana/spl-token";
 
@@ -251,7 +251,7 @@ export const getReceiveMessagePdas = async (
 };
 
 export const solanaAddressToHex = (solanaAddress: string): string =>
-  hexlify(bs58.decode(solanaAddress));
+  toHex(bs58.decode(solanaAddress));
 
 export const evmAddressToSolana = (evmAddress: string): string =>
   bs58.encode(hexToBytes(evmAddress));

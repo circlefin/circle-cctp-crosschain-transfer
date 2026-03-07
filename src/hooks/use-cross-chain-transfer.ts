@@ -33,9 +33,10 @@ import {
   createPublicClient,
   formatUnits,
   parseEther,
+  toHex,
+  hexToBytes,
 } from "viem";
 import { privateKeyToAccount, nonceManager } from "viem/accounts";
-import axios from "axios";
 import {
   sepolia,
   avalancheFuji,
@@ -69,8 +70,6 @@ import {
   TokenInvalidAccountOwnerError,
 } from "@solana/spl-token";
 import bs58 from "bs58";
-import { hexlify } from "ethers";
-// Import BN at top level like Circle's examples
 import { BN } from "@coral-xyz/anchor";
 import {
   SupportedChainId,
@@ -81,7 +80,6 @@ import {
   SOLANA_RPC_ENDPOINT,
   IRIS_API_URL,
 } from "@/lib/chains";
-import { getBytes } from "ethers";
 import { SystemProgram } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
@@ -419,7 +417,7 @@ export function useCrossChainTransfer() {
           usdcMint,
           destinationWallet
         );
-        mintRecipient = hexlify(bs58.decode(tokenAccount.toBase58()));
+        mintRecipient = toHex(bs58.decode(tokenAccount.toBase58()));
       } else {
         // For EVM destinations, pad the hex address
         mintRecipient = `0x${destinationAddress
@@ -530,7 +528,7 @@ export function useCrossChainTransfer() {
         const formattedAddress = `0x${cleanAddress}`;
         // Convert address to bytes32 format then to PublicKey
         const bytes32Address = evmAddressToBytes32(formattedAddress);
-        mintRecipient = new PublicKey(getBytes(bytes32Address));
+        mintRecipient = new PublicKey(hexToBytes(bytes32Address as Hex));
       }
 
       // Get the EVM address that will call receiveMessage
@@ -540,7 +538,7 @@ export function useCrossChainTransfer() {
       );
       const evmAddress = evmAccount.address;
       const destinationCaller = new PublicKey(
-        getBytes(evmAddressToBytes32(evmAddress))
+        hexToBytes(evmAddressToBytes32(evmAddress) as Hex)
       );
 
       // Call depositForBurn using Circle's exact approach
@@ -599,18 +597,22 @@ export function useCrossChainTransfer() {
 
     while (true) {
       try {
-        const response = await axios.get(url);
-        if (response.data?.messages?.[0]?.status === "complete") {
+        const response = await fetch(url);
+        if (response.status === 404) {
+          await new Promise((resolve) => setTimeout(resolve, 5000));
+          continue;
+        }
+        if (!response.ok) {
+          throw new Error(`Attestation request failed with status ${response.status}`);
+        }
+        const data = await response.json();
+        if (data?.messages?.[0]?.status === "complete") {
           addLog("Attestation retrieved!");
-          return response.data.messages[0];
+          return data.messages[0];
         }
         addLog("Waiting for attestation...");
         await new Promise((resolve) => setTimeout(resolve, 5000));
       } catch (error) {
-        if (axios.isAxiosError(error) && error.response?.status === 404) {
-          await new Promise((resolve) => setTimeout(resolve, 5000));
-          continue;
-        }
         setError("Attestation retrieval failed");
         addLog(
           `Attestation error: ${
