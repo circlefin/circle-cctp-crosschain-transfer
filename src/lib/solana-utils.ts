@@ -23,28 +23,15 @@ import {
   Transaction,
   VersionedTransaction,
 } from "@solana/web3.js";
-import { toHex } from "viem";
-import bs58 from "bs58";
 import { getAssociatedTokenAddress } from "@solana/spl-token";
 
-import {
-  SupportedChainId,
-  CHAIN_CONFIGS,
-  SOLANA_RPC_ENDPOINT,
-  IRIS_API_URL,
-} from "./chains";
+import { SOLANA_RPC_ENDPOINT } from "./chains";
 
 // Import IDLs from JSON files
 import MessageTransmitterIdl from "../solana/idl/message_transmitter.json";
 import TokenMessengerMinterIdl from "../solana/idl/token_messenger_minter.json";
 import type { TokenMessengerMinterV2 } from "../solana/types/token_messenger_minter";
 import type { MessageTransmitterV2 } from "../solana/types/message_transmitter";
-
-// Use constants from chains.ts
-export const SOLANA_SRC_DOMAIN_ID =
-  CHAIN_CONFIGS[SupportedChainId.SOLANA_DEVNET].destinationDomain;
-export const SOLANA_USDC_ADDRESS =
-  CHAIN_CONFIGS[SupportedChainId.SOLANA_DEVNET].usdcAddress as string;
 
 export interface FindProgramAddressResponse {
   publicKey: anchor.web3.PublicKey;
@@ -248,12 +235,6 @@ export const getReceiveMessagePdas = async (
   };
 };
 
-export const solanaAddressToHex = (solanaAddress: string): string =>
-  toHex(bs58.decode(solanaAddress));
-
-export const evmAddressToSolana = (evmAddress: string): string =>
-  bs58.encode(hexToBytes(evmAddress));
-
 export const evmAddressToBytes32 = (address: string): string =>
   `0x000000000000000000000000${address.replace("0x", "")}`;
 
@@ -284,34 +265,7 @@ export const findProgramAddress = (
   return { publicKey: res[0], bump: res[1] };
 };
 
-// Fetches attestation from attestation service given the txHash
-export const getMessages = async (txHash: string) => {
-  console.log("Fetching messages for tx...", txHash);
-  let attestationResponse: any = {};
-  while (
-    attestationResponse.error ||
-    !attestationResponse.messages ||
-    attestationResponse.messages?.[0]?.attestation === "PENDING"
-  ) {
-    // Use Circle's official endpoint format (no /v2/)
-    const response = await fetch(
-      `${IRIS_API_URL}/messages/${SOLANA_SRC_DOMAIN_ID}/${txHash}`
-    );
-    attestationResponse = await response.json();
-    // Wait 2 seconds to avoid getting rate limited
-    if (
-      attestationResponse.error ||
-      !attestationResponse.messages ||
-      attestationResponse.messages?.[0]?.attestation === "PENDING"
-    ) {
-      await new Promise((r) => setTimeout(r, 2000));
-    }
-  }
-
-  return attestationResponse;
-};
-
-// For CCTP v2: Nonce is at offset 8, 8 bytes, little-endian
+// CCTP V2 message header: nonce is at byte offset 12, 32 bytes (message[12..44])
 export const decodeNonceFromMessage = (messageHex: string): Buffer => {
   const nonceIndex = 12;
   const nonceBytesLength = 32;
