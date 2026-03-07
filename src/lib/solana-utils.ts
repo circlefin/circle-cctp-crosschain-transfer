@@ -29,8 +29,7 @@ import { getAssociatedTokenAddress } from "@solana/spl-token";
 
 import {
   SupportedChainId,
-  CHAIN_IDS_TO_USDC_ADDRESSES,
-  DESTINATION_DOMAINS,
+  CHAIN_CONFIGS,
   SOLANA_RPC_ENDPOINT,
   IRIS_API_URL,
 } from "./chains";
@@ -43,10 +42,9 @@ import type { MessageTransmitterV2 } from "../solana/types/message_transmitter";
 
 // Use constants from chains.ts
 export const SOLANA_SRC_DOMAIN_ID =
-  DESTINATION_DOMAINS[SupportedChainId.SOLANA_DEVNET];
-export const SOLANA_USDC_ADDRESS = CHAIN_IDS_TO_USDC_ADDRESSES[
-  SupportedChainId.SOLANA_DEVNET
-] as string;
+  CHAIN_CONFIGS[SupportedChainId.SOLANA_DEVNET].destinationDomain;
+export const SOLANA_USDC_ADDRESS =
+  CHAIN_CONFIGS[SupportedChainId.SOLANA_DEVNET].usdcAddress as string;
 
 export interface FindProgramAddressResponse {
   publicKey: anchor.web3.PublicKey;

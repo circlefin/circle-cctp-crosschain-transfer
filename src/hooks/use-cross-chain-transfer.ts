@@ -37,24 +37,6 @@ import {
   hexToBytes,
 } from "viem";
 import { privateKeyToAccount, nonceManager } from "viem/accounts";
-import {
-  sepolia,
-  avalancheFuji,
-  baseSepolia,
-  lineaSepolia,
-  arbitrumSepolia,
-  worldchainSepolia,
-  optimismSepolia,
-  unichainSepolia,
-  polygonAmoy,
-  seiTestnet,
-  xdcTestnet,
-  hyperliquidEvmTestnet,
-  inkSepolia,
-  plumeSepolia,
-  arcTestnet
-} from "viem/chains";
-import { defineChain } from "viem";
 
 // Solana imports
 import {
@@ -73,84 +55,12 @@ import bs58 from "bs58";
 import { BN } from "@coral-xyz/anchor";
 import {
   SupportedChainId,
-  CHAIN_IDS_TO_USDC_ADDRESSES,
-  CHAIN_IDS_TO_TOKEN_MESSENGER,
-  CHAIN_IDS_TO_MESSAGE_TRANSMITTER,
-  DESTINATION_DOMAINS,
+  CHAIN_CONFIGS,
   SOLANA_RPC_ENDPOINT,
   IRIS_API_URL,
 } from "@/lib/chains";
 import { SystemProgram } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
-
-// Custom Sonic Testnet configuration
-const sonicTestnet = defineChain({
-  id: 14601,
-  name: "Sonic Testnet",
-  nativeCurrency: {
-    decimals: 18,
-    name: "Sonic",
-    symbol: "S",
-  },
-  rpcUrls: {
-    default: {
-      http: ["https://rpc.testnet.soniclabs.com"],
-    },
-  },
-  blockExplorers: {
-    default: {
-      name: "Sonic Testnet Explorer",
-      url: "https://testnet.soniclabs.com/",
-    },
-  },
-  testnet: true,
-});
-
-// Custom Codex Testnet configuration
-const codexTestnet = defineChain({
-  id: 812242,
-  name: "Codex Testnet",
-  nativeCurrency: {
-    decimals: 18,
-    name: "Codex",
-    symbol: "CDX",
-  },
-  rpcUrls: {
-    default: {
-      http: ["https://812242.rpc.thirdweb.com"],
-    },
-  },
-  blockExplorers: {
-    default: {
-      name: "Codex Explorer",
-      url: "https://explorer.codex-stg.xyz/",
-    },
-  },
-  testnet: true,
-});
-
-// Monad Testnet configuration
-const monadTestnet = defineChain({
-  id: 10143,
-  name: "Monad Testnet",
-  nativeCurrency: {
-    decimals: 18,
-    name: "MON",
-    symbol: "MON",
-  },
-  rpcUrls: {
-    default: {
-      http: ["https://testnet-rpc.monad.xyz"],
-    },
-  },
-  blockExplorers: {
-    default: {
-      name: "Monad Explorer",
-      url: "https://testnet.monadexplorer.com",
-    },
-  },
-  testnet: true,
-});
 
 export type TransferStep =
   | "idle"
@@ -160,27 +70,6 @@ export type TransferStep =
   | "minting"
   | "completed"
   | "error";
-
-const chains = {
-  [SupportedChainId.ETH_SEPOLIA]: sepolia,
-  [SupportedChainId.ARC_TESTNET]: arcTestnet,
-  [SupportedChainId.AVAX_FUJI]: avalancheFuji,
-  [SupportedChainId.BASE_SEPOLIA]: baseSepolia,
-  [SupportedChainId.SONIC_TESTNET]: sonicTestnet,
-  [SupportedChainId.LINEA_SEPOLIA]: lineaSepolia,
-  [SupportedChainId.ARBITRUM_SEPOLIA]: arbitrumSepolia,
-  [SupportedChainId.WORLDCHAIN_SEPOLIA]: worldchainSepolia,
-  [SupportedChainId.OPTIMISM_SEPOLIA]: optimismSepolia,
-  [SupportedChainId.CODEX_TESTNET]: codexTestnet,
-  [SupportedChainId.UNICHAIN_SEPOLIA]: unichainSepolia,
-  [SupportedChainId.POLYGON_AMOY]: polygonAmoy,
-  [SupportedChainId.SEI_TESTNET]: seiTestnet,
-  [SupportedChainId.PLUME_SEPOLIA]: plumeSepolia,
-  [SupportedChainId.XDC_TESTNET]: xdcTestnet,
-  [SupportedChainId.HYPEREVM_TESTNET]: hyperliquidEvmTestnet,
-  [SupportedChainId.INK_SEPOLIA]: inkSepolia,
-  [SupportedChainId.MONAD_TESTNET]: monadTestnet,
-};
 
 export function useCrossChainTransfer() {
   const [currentStep, setCurrentStep] = useState<TransferStep>("idle");
@@ -268,7 +157,7 @@ export function useCrossChainTransfer() {
       nonceManager,
     });
     return createWalletClient({
-      chain: chains[chainId as keyof typeof chains],
+      chain: CHAIN_CONFIGS[chainId as SupportedChainId].viemChain,
       transport: http(),
       account,
     });
@@ -286,7 +175,7 @@ export function useCrossChainTransfer() {
     const privateKey = getPrivateKeyForChain(chainId);
     const keypair = getSolanaKeypair(privateKey);
     const usdcMint = new PublicKey(
-      CHAIN_IDS_TO_USDC_ADDRESSES[chainId] as string
+      CHAIN_CONFIGS[chainId].usdcAddress as string
     );
 
     try {
@@ -312,7 +201,7 @@ export function useCrossChainTransfer() {
 
   const getEVMBalance = async (chainId: SupportedChainId) => {
     const publicClient = createPublicClient({
-      chain: chains[chainId as keyof typeof chains],
+      chain: CHAIN_CONFIGS[chainId as SupportedChainId].viemChain,
       transport: http(),
     });
     const privateKey = getPrivateKeyForChain(chainId);
@@ -321,7 +210,7 @@ export function useCrossChainTransfer() {
     });
 
     const balance = await publicClient.readContract({
-      address: CHAIN_IDS_TO_USDC_ADDRESSES[chainId] as `0x${string}`,
+      address: CHAIN_CONFIGS[chainId].usdcAddress as `0x${string}`,
       abi: [
         {
           constant: true,
@@ -351,7 +240,7 @@ export function useCrossChainTransfer() {
 
     try {
       const tx = await client.sendTransaction({
-        to: CHAIN_IDS_TO_USDC_ADDRESSES[sourceChainId] as `0x${string}`,
+        to: CHAIN_CONFIGS[sourceChainId as SupportedChainId].usdcAddress as `0x${string}`,
         data: encodeFunctionData({
           abi: [
             {
@@ -367,7 +256,7 @@ export function useCrossChainTransfer() {
           ],
           functionName: "approve",
           args: [
-            CHAIN_IDS_TO_TOKEN_MESSENGER[sourceChainId] as `0x${string}`,
+            CHAIN_CONFIGS[sourceChainId as SupportedChainId].tokenMessenger as `0x${string}`,
             10000000000n,
           ],
         }),
@@ -410,7 +299,7 @@ export function useCrossChainTransfer() {
         // For Solana destinations, use the Solana token account as mintRecipient
         // Get the associated token account for the destination wallet
         const usdcMint = new PublicKey(
-          CHAIN_IDS_TO_USDC_ADDRESSES[SupportedChainId.SOLANA_DEVNET] as string
+          CHAIN_CONFIGS[SupportedChainId.SOLANA_DEVNET].usdcAddress as string
         );
         const destinationWallet = new PublicKey(destinationAddress);
         const tokenAccount = await getAssociatedTokenAddress(
@@ -426,7 +315,7 @@ export function useCrossChainTransfer() {
       }
 
       const tx = await client.sendTransaction({
-        to: CHAIN_IDS_TO_TOKEN_MESSENGER[sourceChainId] as `0x${string}`,
+        to: CHAIN_CONFIGS[sourceChainId as SupportedChainId].tokenMessenger as `0x${string}`,
         data: encodeFunctionData({
           abi: [
             {
@@ -448,9 +337,9 @@ export function useCrossChainTransfer() {
           functionName: "depositForBurn",
           args: [
             amount,
-            DESTINATION_DOMAINS[destinationChainId],
+            CHAIN_CONFIGS[destinationChainId as SupportedChainId].destinationDomain,
             mintRecipient as Hex,
-            CHAIN_IDS_TO_USDC_ADDRESSES[sourceChainId] as `0x${string}`,
+            CHAIN_CONFIGS[sourceChainId as SupportedChainId].usdcAddress as `0x${string}`,
             "0x0000000000000000000000000000000000000000000000000000000000000000",
             maxFee,
             finalityThreshold,
@@ -491,13 +380,13 @@ export function useCrossChainTransfer() {
         getPrograms(provider);
 
       const usdcMint = new PublicKey(
-        CHAIN_IDS_TO_USDC_ADDRESSES[SupportedChainId.SOLANA_DEVNET] as string
+        CHAIN_CONFIGS[SupportedChainId.SOLANA_DEVNET].usdcAddress as string
       );
 
       const pdas = getDepositForBurnPdas(
         { messageTransmitterProgram, tokenMessengerMinterProgram },
         usdcMint,
-        DESTINATION_DOMAINS[destinationChainId]
+        CHAIN_CONFIGS[destinationChainId as SupportedChainId].destinationDomain
       );
 
       // Generate event account keypair
@@ -547,7 +436,7 @@ export function useCrossChainTransfer() {
       ).methods
         .depositForBurn({
           amount: new BN(amount.toString()),
-          destinationDomain: DESTINATION_DOMAINS[destinationChainId],
+          destinationDomain: CHAIN_CONFIGS[destinationChainId as SupportedChainId].destinationDomain,
           mintRecipient,
           maxFee: new BN((amount - 1n).toString()),
           minFinalityThreshold: transferType === "fast" ? 1000 : 2000,
@@ -593,7 +482,7 @@ export function useCrossChainTransfer() {
     setCurrentStep("waiting-attestation");
     addLog("Retrieving attestation...");
 
-    const url = `${IRIS_API_URL}/v2/messages/${DESTINATION_DOMAINS[sourceChainId]}?transactionHash=${transactionHash}`;
+    const url = `${IRIS_API_URL}/v2/messages/${CHAIN_CONFIGS[sourceChainId as SupportedChainId].destinationDomain}?transactionHash=${transactionHash}`;
 
     while (true) {
       try {
@@ -637,14 +526,13 @@ export function useCrossChainTransfer() {
     while (retries < MAX_RETRIES) {
       try {
         const publicClient = createPublicClient({
-          chain: chains[destinationChainId as keyof typeof chains],
+          chain: CHAIN_CONFIGS[destinationChainId as SupportedChainId].viemChain,
           transport: http(),
         });
         const feeData = await publicClient.estimateFeesPerGas();
         const contractConfig = {
-          address: CHAIN_IDS_TO_MESSAGE_TRANSMITTER[
-            destinationChainId
-          ] as `0x${string}`,
+          address: CHAIN_CONFIGS[destinationChainId as SupportedChainId]
+            .messageTransmitter as `0x${string}`,
           abi: [
             {
               type: "function",
@@ -718,7 +606,7 @@ export function useCrossChainTransfer() {
         getPrograms(provider);
 
       const usdcMint = new PublicKey(
-        CHAIN_IDS_TO_USDC_ADDRESSES[SupportedChainId.SOLANA_DEVNET] as string
+        CHAIN_CONFIGS[SupportedChainId.SOLANA_DEVNET].usdcAddress as string
       );
       const messageHex = attestation.message;
       const attestationHex = attestation.attestation;
@@ -732,14 +620,10 @@ export function useCrossChainTransfer() {
       // This would typically be the USDC address on the source chain
       let remoteTokenAddressHex = "";
       // Find the source chain USDC address
-      for (const [chainId, usdcAddress] of Object.entries(
-        CHAIN_IDS_TO_USDC_ADDRESSES
-      )) {
-        if (
-          DESTINATION_DOMAINS[parseInt(chainId)] === sourceDomain &&
-          !isSolanaChain(parseInt(chainId))
-        ) {
-          remoteTokenAddressHex = evmAddressToBytes32(usdcAddress as string);
+      for (const [chainId, config] of Object.entries(CHAIN_CONFIGS)) {
+        const id = parseInt(chainId);
+        if (config.destinationDomain === sourceDomain && !isSolanaChain(id)) {
+          remoteTokenAddressHex = evmAddressToBytes32(config.usdcAddress as string);
           break;
         }
       }
@@ -894,7 +778,7 @@ export function useCrossChainTransfer() {
           return BigInt(balance);
         } else {
           const publicClient = createPublicClient({
-            chain: chains[chainId as keyof typeof chains],
+            chain: CHAIN_CONFIGS[chainId as SupportedChainId].viemChain,
             transport: http(),
           });
           const privateKey = getPrivateKeyForChain(chainId);
