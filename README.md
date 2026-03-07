@@ -1,34 +1,37 @@
 # CCTP Sample App
 
+> **Warning:** This is a local development sample application only. It exposes private keys to the browser via `NEXT_PUBLIC_` environment variables. **Do not deploy this application to any public environment.** Use only testnet keys with no real value.
+
 This sample application demonstrates Cross-Chain Transfer Protocol (CCTP) step-by-step capabilities on testnet networks. The app showcases CCTP functionality across multiple testnets:
 
+- Arbitrum Sepolia
 - Arc Testnet
-- Ethereum Sepolia
 - Avalanche Fuji C-Chain
 - Base Sepolia
-- Linea Sepolia
-- Arbitrum Sepolia
-- Sonic Testnet
-- Worldchain Sepolia
-- Optimism Sepolia
-- Solana Devnet
 - Codex Testnet
-- Unichain Sepolia
-- Polygon PoS Amoy
-- Sei Testnet
-- XDC Testnet
-- Plume Sepolia
+- Edge Testnet
+- Ethereum Sepolia
 - HyperEVM Testnet
 - Ink Sepolia
+- Linea Sepolia
 - Monad Testnet
+- Optimism Sepolia
+- Plume Sepolia
+- Polygon PoS Amoy
+- Sei Testnet
+- Solana Devnet
+- Sonic Testnet
+- Unichain Sepolia
+- Worldchain Sepolia
+- XDC Testnet
 
 ## Environment Setup
 
 1. Copy the `.env.example` file to `.env.local`:
 
-      ```bash
-      cp .env.example .env.local
-      ```
+   ```bash
+   cp .env.example .env.local
+   ```
 
 2. Update the `.env.local` file with your configuration:
 
@@ -39,8 +42,6 @@ This sample application demonstrates Cross-Chain Transfer Protocol (CCTP) step-b
 
    - **EVM chains**: Uses `NEXT_PUBLIC_EVM_PRIVATE_KEY`
    - **Solana chains**: Uses `NEXT_PUBLIC_SOLANA_PRIVATE_KEY`
-
-   **Note**: For backward compatibility, `NEXT_PUBLIC_PRIVATE_KEY` is still supported for EVM chains if `NEXT_PUBLIC_EVM_PRIVATE_KEY` is not set.
 
 ## Getting Started
 

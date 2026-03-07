@@ -795,9 +795,7 @@ export function useCrossChainTransfer() {
       }
       return solanaKey;
     } else {
-      const evmKey =
-        process.env.NEXT_PUBLIC_EVM_PRIVATE_KEY ||
-        process.env.NEXT_PUBLIC_PRIVATE_KEY;
+      const evmKey = process.env.NEXT_PUBLIC_EVM_PRIVATE_KEY;
       if (!evmKey) {
         throw new Error(
           "EVM private key not found. Please set NEXT_PUBLIC_EVM_PRIVATE_KEY in your environment."

@@ -248,4 +248,4 @@ export const SUPPORTED_CHAINS = (Object.keys(CHAIN_CONFIGS).map(Number) as Suppo
 
 export const SOLANA_RPC_ENDPOINT = "https://api.devnet.solana.com";
 
-export const IRIS_API_URL = process.env.IRIS_API_URL ?? "https://iris-api-sandbox.circle.com";
+export const IRIS_API_URL = "https://iris-api-sandbox.circle.com";
