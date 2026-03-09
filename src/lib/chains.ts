@@ -50,6 +50,7 @@ export enum SupportedChainId {
   INK_SEPOLIA = 763373,
   LINEA_SEPOLIA = 59141,
   MONAD_TESTNET = 10143,
+  MORPH_HOODI = 2910,
   OPTIMISM_SEPOLIA = 11155420,
   PLUME_SEPOLIA = 98867,
   POLYGON_AMOY = 80002,
@@ -77,6 +78,17 @@ const edgeTestnet = defineChain({
   rpcUrls: { default: { http: ["https://edge-testnet.g.alchemy.com/public"] } },
   blockExplorers: {
     default: { name: "Edge Testnet Explorer", url: "https://edge-testnet.explorer.alchemy.com/" },
+  },
+  testnet: true,
+});
+
+const morphHoodi = defineChain({
+  id: 2910,
+  name: "Morph Hoodi",
+  nativeCurrency: { decimals: 18, name: "Ether", symbol: "ETH" },
+  rpcUrls: { default: { http: ["https://rpc-hoodi.morph.network"] } },
+  blockExplorers: {
+    default: { name: "Morph Hoodi Explorer", url: "https://explorer-hoodi.morph.network" },
   },
   testnet: true,
 });
@@ -169,6 +181,14 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
     messageTransmitter: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
     destinationDomain: 15,
+  },
+  [SupportedChainId.MORPH_HOODI]: {
+    name: "Morph Hoodi",
+    viemChain: morphHoodi,
+    usdcAddress: "0x7433b41C6c5e1d58D4Da99483609520255ab661B",
+    tokenMessenger: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
+    messageTransmitter: "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
+    destinationDomain: 30,
   },
   [SupportedChainId.OPTIMISM_SEPOLIA]: {
     name: "Optimism Sepolia",
