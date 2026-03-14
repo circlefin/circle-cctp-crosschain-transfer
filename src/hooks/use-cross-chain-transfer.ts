@@ -32,127 +32,33 @@ import {
   parseUnits,
   createPublicClient,
   formatUnits,
-  parseEther,
+
+  toHex,
+  hexToBytes,
 } from "viem";
 import { privateKeyToAccount, nonceManager } from "viem/accounts";
-import axios from "axios";
-import {
-  sepolia,
-  avalancheFuji,
-  baseSepolia,
-  lineaSepolia,
-  arbitrumSepolia,
-  worldchainSepolia,
-  optimismSepolia,
-  unichainSepolia,
-  polygonAmoy,
-  seiTestnet,
-  xdcTestnet,
-  hyperliquidEvmTestnet,
-  inkSepolia,
-  plumeSepolia,
-  arcTestnet
-} from "viem/chains";
-import { defineChain } from "viem";
 
-// Solana imports
 import {
   Connection,
   Keypair,
   PublicKey,
-  LAMPORTS_PER_SOL,
+  SystemProgram,
 } from "@solana/web3.js";
 import {
   getAssociatedTokenAddress,
   getAccount,
   TokenAccountNotFoundError,
   TokenInvalidAccountOwnerError,
+  TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import bs58 from "bs58";
-import { hexlify } from "ethers";
-// Import BN at top level like Circle's examples
 import { BN } from "@coral-xyz/anchor";
 import {
   SupportedChainId,
-  CHAIN_IDS_TO_USDC_ADDRESSES,
-  CHAIN_IDS_TO_TOKEN_MESSENGER,
-  CHAIN_IDS_TO_MESSAGE_TRANSMITTER,
-  DESTINATION_DOMAINS,
+  CHAIN_CONFIGS,
   SOLANA_RPC_ENDPOINT,
   IRIS_API_URL,
 } from "@/lib/chains";
-import { getBytes } from "ethers";
-import { SystemProgram } from "@solana/web3.js";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
-
-// Custom Sonic Testnet configuration
-const sonicTestnet = defineChain({
-  id: 14601,
-  name: "Sonic Testnet",
-  nativeCurrency: {
-    decimals: 18,
-    name: "Sonic",
-    symbol: "S",
-  },
-  rpcUrls: {
-    default: {
-      http: ["https://rpc.testnet.soniclabs.com"],
-    },
-  },
-  blockExplorers: {
-    default: {
-      name: "Sonic Testnet Explorer",
-      url: "https://testnet.soniclabs.com/",
-    },
-  },
-  testnet: true,
-});
-
-// Custom Codex Testnet configuration
-const codexTestnet = defineChain({
-  id: 812242,
-  name: "Codex Testnet",
-  nativeCurrency: {
-    decimals: 18,
-    name: "Codex",
-    symbol: "CDX",
-  },
-  rpcUrls: {
-    default: {
-      http: ["https://812242.rpc.thirdweb.com"],
-    },
-  },
-  blockExplorers: {
-    default: {
-      name: "Codex Explorer",
-      url: "https://explorer.codex-stg.xyz/",
-    },
-  },
-  testnet: true,
-});
-
-// Monad Testnet configuration
-const monadTestnet = defineChain({
-  id: 10143,
-  name: "Monad Testnet",
-  nativeCurrency: {
-    decimals: 18,
-    name: "MON",
-    symbol: "MON",
-  },
-  rpcUrls: {
-    default: {
-      http: ["https://testnet-rpc.monad.xyz"],
-    },
-  },
-  blockExplorers: {
-    default: {
-      name: "Monad Explorer",
-      url: "https://testnet.monadexplorer.com",
-    },
-  },
-  testnet: true,
-});
 
 export type TransferStep =
   | "idle"
@@ -163,188 +69,113 @@ export type TransferStep =
   | "completed"
   | "error";
 
-const chains = {
-  [SupportedChainId.ETH_SEPOLIA]: sepolia,
-  [SupportedChainId.ARC_TESTNET]: arcTestnet,
-  [SupportedChainId.AVAX_FUJI]: avalancheFuji,
-  [SupportedChainId.BASE_SEPOLIA]: baseSepolia,
-  [SupportedChainId.SONIC_TESTNET]: sonicTestnet,
-  [SupportedChainId.LINEA_SEPOLIA]: lineaSepolia,
-  [SupportedChainId.ARBITRUM_SEPOLIA]: arbitrumSepolia,
-  [SupportedChainId.WORLDCHAIN_SEPOLIA]: worldchainSepolia,
-  [SupportedChainId.OPTIMISM_SEPOLIA]: optimismSepolia,
-  [SupportedChainId.CODEX_TESTNET]: codexTestnet,
-  [SupportedChainId.UNICHAIN_SEPOLIA]: unichainSepolia,
-  [SupportedChainId.POLYGON_AMOY]: polygonAmoy,
-  [SupportedChainId.SEI_TESTNET]: seiTestnet,
-  [SupportedChainId.PLUME_SEPOLIA]: plumeSepolia,
-  [SupportedChainId.XDC_TESTNET]: xdcTestnet,
-  [SupportedChainId.HYPEREVM_TESTNET]: hyperliquidEvmTestnet,
-  [SupportedChainId.INK_SEPOLIA]: inkSepolia,
-  [SupportedChainId.MONAD_TESTNET]: monadTestnet,
-};
+type EvmClient = WalletClient<HttpTransport, Chain, Account>;
+
+interface AttestationResponse {
+  message: Hex;
+  attestation: Hex;
+  status: string;
+}
+
+const DEFAULT_DECIMALS = 6;
+const USDC_APPROVAL_AMOUNT = 10_000_000_000n; // 10,000 USDC
+const FAST_FINALITY_THRESHOLD = 1000;
+const STANDARD_FINALITY_THRESHOLD = 2000;
+const ATTESTATION_POLL_INTERVAL_MS = 5000;
+const MINT_MAX_RETRIES = 3;
+const MINT_RETRY_BASE_DELAY_MS = 2000;
+const GAS_BUFFER_PERCENT = 120n;
+const BYTES32_ZERO = "0x0000000000000000000000000000000000000000000000000000000000000000" as Hex;
 
 export function useCrossChainTransfer() {
   const [currentStep, setCurrentStep] = useState<TransferStep>("idle");
   const [logs, setLogs] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const DEFAULT_DECIMALS = 6;
+  // ---------------------------------------------------------------------------
+  // CCTP Transfer Flow
+  // The core transfer is a 4-step process: Approve → Burn → Attest → Mint
+  // ---------------------------------------------------------------------------
 
-  const addLog = (message: string) =>
-    setLogs((prev) => [
-      ...prev,
-      `[${new Date().toLocaleTimeString()}] ${message}`,
-    ]);
-
-  // Utility function to check if a chain is Solana
-  const isSolanaChain = (chainId: number): boolean => {
-    return chainId === SupportedChainId.SOLANA_DEVNET;
-  };
-
-  // Utility function to create Solana keypair from private key
-  const getSolanaKeypair = (privateKey: string): Keypair => {
+  const executeTransfer = async (
+    sourceChainId: number,
+    destinationChainId: number,
+    amount: string,
+    transferType: "fast" | "standard"
+  ) => {
     try {
-      // Try to decode as base58 first (standard Solana format)
-      const privateKeyBytes = bs58.decode(privateKey);
-      if (privateKeyBytes.length === 64) {
-        // This is a 64-byte secret key (32 bytes seed + 32 bytes public key)
-        return Keypair.fromSecretKey(privateKeyBytes);
-      } else if (privateKeyBytes.length === 32) {
-        // This is a 32-byte seed
-        return Keypair.fromSeed(privateKeyBytes);
+      const numericAmount = parseUnits(amount, DEFAULT_DECIMALS);
+
+      const isSourceSolana = isSolanaChain(sourceChainId);
+      const isDestinationSolana = isSolanaChain(destinationChainId);
+
+      let defaultDestination: string;
+
+      const sourceClient = getClients(sourceChainId);
+      const destinationClient = getClients(destinationChainId);
+
+      if (isDestinationSolana) {
+        const destinationPrivateKey = getPrivateKeyForChain(destinationChainId);
+        const destinationKeypair = getSolanaKeypair(destinationPrivateKey);
+        defaultDestination = destinationKeypair.publicKey.toString();
+      } else {
+        const destinationPrivateKey = getPrivateKeyForChain(destinationChainId);
+        const account = privateKeyToAccount(
+          `0x${destinationPrivateKey.replace(/^0x/, "")}`
+        );
+        defaultDestination = account.address;
+      }
+
+      // Step 1: Approve
+      if (isSourceSolana) {
+        await approveSolanaUsdc(sourceClient as Keypair);
+      } else {
+        await approveEvmUsdc(sourceClient as EvmClient, sourceChainId);
+      }
+
+      // Step 2: Burn
+      let burnTx: string;
+      if (isSourceSolana) {
+        burnTx = await burnSolanaUsdc(
+          sourceClient as Keypair,
+          numericAmount,
+          destinationChainId,
+          defaultDestination,
+          transferType
+        );
+      } else {
+        burnTx = await burnEvmUsdc(
+          sourceClient as EvmClient,
+          sourceChainId,
+          numericAmount,
+          destinationChainId,
+          defaultDestination,
+          transferType
+        );
+      }
+
+      // Step 3: Retrieve attestation
+      const attestation = await retrieveAttestation(burnTx, sourceChainId);
+
+      // Step 4: Mint
+      if (isDestinationSolana) {
+        await mintSolanaUsdc(destinationClient as Keypair, attestation);
+      } else {
+        await mintEvmUsdc(destinationClient as EvmClient, destinationChainId, attestation);
       }
     } catch (error) {
-      // If base58 decode fails, try hex format (fallback)
-      const cleanPrivateKey = privateKey.replace(/^0x/, "");
-      if (cleanPrivateKey.length === 64) {
-        // Convert hex to Uint8Array (32 bytes for ed25519 seed)
-        const privateKeyBytes = new Uint8Array(32);
-        for (let i = 0; i < 32; i++) {
-          privateKeyBytes[i] = parseInt(cleanPrivateKey.substr(i * 2, 2), 16);
-        }
-        return Keypair.fromSeed(privateKeyBytes);
-      }
-    }
-
-    throw new Error(
-      "Invalid Solana private key format. Expected base58 encoded key or 32-byte hex string."
-    );
-  };
-
-  // Utility function to get the appropriate private key for a chain
-  const getPrivateKeyForChain = (chainId: number): string => {
-    if (isSolanaChain(chainId)) {
-      const solanaKey = process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY;
-      if (!solanaKey) {
-        throw new Error(
-          "Solana private key not found. Please set NEXT_PUBLIC_SOLANA_PRIVATE_KEY in your environment."
-        );
-      }
-      return solanaKey;
-    } else {
-      const evmKey =
-        process.env.NEXT_PUBLIC_EVM_PRIVATE_KEY ||
-        process.env.NEXT_PUBLIC_PRIVATE_KEY;
-      if (!evmKey) {
-        throw new Error(
-          "EVM private key not found. Please set NEXT_PUBLIC_EVM_PRIVATE_KEY in your environment."
-        );
-      }
-      return evmKey;
-    }
-  };
-
-  // Solana connection
-  const getSolanaConnection = (): Connection => {
-    return new Connection(SOLANA_RPC_ENDPOINT, "confirmed");
-  };
-
-  const getClients = (chainId: SupportedChainId) => {
-    const privateKey = getPrivateKeyForChain(chainId);
-
-    if (isSolanaChain(chainId)) {
-      return getSolanaKeypair(privateKey);
-    }
-    const account = privateKeyToAccount(`0x${privateKey.replace(/^0x/, "")}`, {
-      nonceManager,
-    });
-    return createWalletClient({
-      chain: chains[chainId as keyof typeof chains],
-      transport: http(),
-      account,
-    });
-  };
-
-  const getBalance = async (chainId: SupportedChainId) => {
-    if (isSolanaChain(chainId)) {
-      return getSolanaBalance(chainId);
-    }
-    return getEVMBalance(chainId);
-  };
-
-  const getSolanaBalance = async (chainId: SupportedChainId) => {
-    const connection = getSolanaConnection();
-    const privateKey = getPrivateKeyForChain(chainId);
-    const keypair = getSolanaKeypair(privateKey);
-    const usdcMint = new PublicKey(
-      CHAIN_IDS_TO_USDC_ADDRESSES[chainId] as string
-    );
-
-    try {
-      const associatedTokenAddress = await getAssociatedTokenAddress(
-        usdcMint,
-        keypair.publicKey
+      setCurrentStep("error");
+      addLog(
+        `Error: ${error instanceof Error ? error.message : "Unknown error"}`
       );
-
-      const tokenAccount = await getAccount(connection, associatedTokenAddress);
-      const balance =
-        Number(tokenAccount.amount) / Math.pow(10, DEFAULT_DECIMALS);
-      return balance.toString();
-    } catch (error) {
-      if (
-        error instanceof TokenAccountNotFoundError ||
-        error instanceof TokenInvalidAccountOwnerError
-      ) {
-        return "0";
-      }
-      throw error;
     }
   };
 
-  const getEVMBalance = async (chainId: SupportedChainId) => {
-    const publicClient = createPublicClient({
-      chain: chains[chainId as keyof typeof chains],
-      transport: http(),
-    });
-    const privateKey = getPrivateKeyForChain(chainId);
-    const account = privateKeyToAccount(`0x${privateKey.replace(/^0x/, "")}`, {
-      nonceManager,
-    });
+  // ---------------------------------------------------------------------------
+  // Step 1: Approve — Grant TokenMessenger permission to spend USDC
+  // ---------------------------------------------------------------------------
 
-    const balance = await publicClient.readContract({
-      address: CHAIN_IDS_TO_USDC_ADDRESSES[chainId] as `0x${string}`,
-      abi: [
-        {
-          constant: true,
-          inputs: [{ name: "_owner", type: "address" }],
-          name: "balanceOf",
-          outputs: [{ name: "balance", type: "uint256" }],
-          payable: false,
-          stateMutability: "view",
-          type: "function",
-        },
-      ],
-      functionName: "balanceOf",
-      args: [account.address],
-    });
-
-    const formattedBalance = formatUnits(balance, DEFAULT_DECIMALS);
-    return formattedBalance;
-  };
-
-  // EVM functions (existing)
-  const approveUSDC = async (
+  const approveEvmUsdc = async (
     client: WalletClient<HttpTransport, Chain, Account>,
     sourceChainId: number
   ) => {
@@ -353,7 +184,7 @@ export function useCrossChainTransfer() {
 
     try {
       const tx = await client.sendTransaction({
-        to: CHAIN_IDS_TO_USDC_ADDRESSES[sourceChainId] as `0x${string}`,
+        to: CHAIN_CONFIGS[sourceChainId as SupportedChainId].usdcAddress as `0x${string}`,
         data: encodeFunctionData({
           abi: [
             {
@@ -369,8 +200,8 @@ export function useCrossChainTransfer() {
           ],
           functionName: "approve",
           args: [
-            CHAIN_IDS_TO_TOKEN_MESSENGER[sourceChainId] as `0x${string}`,
-            10000000000n,
+            CHAIN_CONFIGS[sourceChainId as SupportedChainId].tokenMessenger as `0x${string}`,
+            USDC_APPROVAL_AMOUNT,
           ],
         }),
       });
@@ -383,15 +214,17 @@ export function useCrossChainTransfer() {
     }
   };
 
-  // Solana approve function (Note: SPL tokens don't require explicit approval like ERC20)
-  const approveSolanaUSDC = async (keypair: Keypair, sourceChainId: number) => {
+  // SPL tokens don't require explicit approval like ERC20; the burn handles authorization
+  const approveSolanaUsdc = async (keypair: Keypair) => {
     setCurrentStep("approving");
-    // For SPL tokens, we don't need explicit approval like ERC20
-    // The burn transaction will handle the token transfer authorization
     return "solana-approve-placeholder";
   };
 
-  const burnUSDC = async (
+  // ---------------------------------------------------------------------------
+  // Step 2: Burn — Burn USDC on source chain via TokenMessenger.depositForBurn
+  // ---------------------------------------------------------------------------
+
+  const burnEvmUsdc = async (
     client: WalletClient<HttpTransport, Chain, Account>,
     sourceChainId: number,
     amount: bigint,
@@ -403,32 +236,28 @@ export function useCrossChainTransfer() {
     addLog("Burning USDC...");
 
     try {
-      const finalityThreshold = transferType === "fast" ? 1000 : 2000;
-      const maxFee = amount - 1n;
+      const finalityThreshold = transferType === "fast" ? FAST_FINALITY_THRESHOLD : STANDARD_FINALITY_THRESHOLD;
+      const maxFee = amount > 0n ? amount - 1n : 0n;
 
-      // Handle Solana destination addresses differently
       let mintRecipient: string;
       if (isSolanaChain(destinationChainId)) {
-        // For Solana destinations, use the Solana token account as mintRecipient
-        // Get the associated token account for the destination wallet
         const usdcMint = new PublicKey(
-          CHAIN_IDS_TO_USDC_ADDRESSES[SupportedChainId.SOLANA_DEVNET] as string
+          CHAIN_CONFIGS[SupportedChainId.SOLANA_DEVNET].usdcAddress as string
         );
         const destinationWallet = new PublicKey(destinationAddress);
         const tokenAccount = await getAssociatedTokenAddress(
           usdcMint,
           destinationWallet
         );
-        mintRecipient = hexlify(bs58.decode(tokenAccount.toBase58()));
+        mintRecipient = toHex(bs58.decode(tokenAccount.toBase58()));
       } else {
-        // For EVM destinations, pad the hex address
         mintRecipient = `0x${destinationAddress
           .replace(/^0x/, "")
           .padStart(64, "0")}`;
       }
 
       const tx = await client.sendTransaction({
-        to: CHAIN_IDS_TO_TOKEN_MESSENGER[sourceChainId] as `0x${string}`,
+        to: CHAIN_CONFIGS[sourceChainId as SupportedChainId].tokenMessenger as `0x${string}`,
         data: encodeFunctionData({
           abi: [
             {
@@ -450,10 +279,10 @@ export function useCrossChainTransfer() {
           functionName: "depositForBurn",
           args: [
             amount,
-            DESTINATION_DOMAINS[destinationChainId],
+            CHAIN_CONFIGS[destinationChainId as SupportedChainId].destinationDomain,
             mintRecipient as Hex,
-            CHAIN_IDS_TO_USDC_ADDRESSES[sourceChainId] as `0x${string}`,
-            "0x0000000000000000000000000000000000000000000000000000000000000000",
+            CHAIN_CONFIGS[sourceChainId as SupportedChainId].usdcAddress as `0x${string}`,
+            BYTES32_ZERO,
             maxFee,
             finalityThreshold,
           ],
@@ -468,8 +297,7 @@ export function useCrossChainTransfer() {
     }
   };
 
-  // Solana burn function
-  const burnSolanaUSDC = async (
+  const burnSolanaUsdc = async (
     keypair: Keypair,
     amount: bigint,
     destinationChainId: number,
@@ -493,32 +321,28 @@ export function useCrossChainTransfer() {
         getPrograms(provider);
 
       const usdcMint = new PublicKey(
-        CHAIN_IDS_TO_USDC_ADDRESSES[SupportedChainId.SOLANA_DEVNET] as string
+        CHAIN_CONFIGS[SupportedChainId.SOLANA_DEVNET].usdcAddress as string
       );
 
       const pdas = getDepositForBurnPdas(
         { messageTransmitterProgram, tokenMessengerMinterProgram },
         usdcMint,
-        DESTINATION_DOMAINS[destinationChainId]
+        CHAIN_CONFIGS[destinationChainId as SupportedChainId].destinationDomain,
+        keypair.publicKey
       );
 
-      // Generate event account keypair
       const messageSentEventAccountKeypair = Keypair.generate();
 
-      // Get user's token account
       const userTokenAccount = await getAssociatedTokenAddress(
         usdcMint,
         keypair.publicKey
       );
 
-      // Convert destination address based on chain type
       let mintRecipient: PublicKey;
 
       if (isSolanaChain(destinationChainId)) {
-        // For Solana destinations, use the Solana public key directly
         mintRecipient = new PublicKey(destinationAddress);
       } else {
-        // For EVM chains, ensure address is properly formatted
         const cleanAddress = destinationAddress
           .replace(/^0x/, "")
           .toLowerCase();
@@ -528,31 +352,29 @@ export function useCrossChainTransfer() {
           );
         }
         const formattedAddress = `0x${cleanAddress}`;
-        // Convert address to bytes32 format then to PublicKey
         const bytes32Address = evmAddressToBytes32(formattedAddress);
-        mintRecipient = new PublicKey(getBytes(bytes32Address));
+        mintRecipient = new PublicKey(hexToBytes(bytes32Address as Hex));
       }
 
-      // Get the EVM address that will call receiveMessage
       const evmPrivateKey = getPrivateKeyForChain(destinationChainId);
       const evmAccount = privateKeyToAccount(
         `0x${evmPrivateKey.replace(/^0x/, "")}`
       );
       const evmAddress = evmAccount.address;
       const destinationCaller = new PublicKey(
-        getBytes(evmAddressToBytes32(evmAddress))
+        hexToBytes(evmAddressToBytes32(evmAddress) as Hex)
       );
 
-      // Call depositForBurn using Circle's exact approach
+      // Anchor's generated IDL types don't fully align with .methods at runtime (known issue in @coral-xyz/anchor 0.30+)
       const depositForBurnTx = await (
         tokenMessengerMinterProgram as any
       ).methods
         .depositForBurn({
           amount: new BN(amount.toString()),
-          destinationDomain: DESTINATION_DOMAINS[destinationChainId],
+          destinationDomain: CHAIN_CONFIGS[destinationChainId as SupportedChainId].destinationDomain,
           mintRecipient,
-          maxFee: new BN((amount - 1n).toString()),
-          minFinalityThreshold: transferType === "fast" ? 1000 : 2000,
+          maxFee: new BN((amount > 0n ? amount - 1n : 0n).toString()),
+          minFinalityThreshold: transferType === "fast" ? FAST_FINALITY_THRESHOLD : STANDARD_FINALITY_THRESHOLD,
           destinationCaller,
         })
         .accounts({
@@ -560,6 +382,7 @@ export function useCrossChainTransfer() {
           eventRentPayer: keypair.publicKey,
           senderAuthorityPda: pdas.authorityPda.publicKey,
           burnTokenAccount: userTokenAccount,
+          denylistAccount: pdas.denylistAccount.publicKey,
           messageTransmitter: pdas.messageTransmitterAccount.publicKey,
           tokenMessenger: pdas.tokenMessengerAccount.publicKey,
           remoteTokenMessenger: pdas.remoteTokenMessengerKey.publicKey,
@@ -571,6 +394,8 @@ export function useCrossChainTransfer() {
           tokenMessengerMinterProgram: tokenMessengerMinterProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
+          eventAuthority: pdas.eventAuthority.publicKey,
+          program: tokenMessengerMinterProgram.programId,
         })
         .signers([messageSentEventAccountKeypair])
         .rpc();
@@ -588,29 +413,37 @@ export function useCrossChainTransfer() {
     }
   };
 
+  // ---------------------------------------------------------------------------
+  // Step 3: Attest — Poll Circle's IRIS API until attestation is complete
+  // ---------------------------------------------------------------------------
+
   const retrieveAttestation = async (
     transactionHash: string,
     sourceChainId: number
-  ) => {
+  ): Promise<AttestationResponse> => {
     setCurrentStep("waiting-attestation");
     addLog("Retrieving attestation...");
 
-    const url = `${IRIS_API_URL}/v2/messages/${DESTINATION_DOMAINS[sourceChainId]}?transactionHash=${transactionHash}`;
+    const url = `${IRIS_API_URL}/v2/messages/${CHAIN_CONFIGS[sourceChainId as SupportedChainId].destinationDomain}?transactionHash=${transactionHash}`;
 
     while (true) {
       try {
-        const response = await axios.get(url);
-        if (response.data?.messages?.[0]?.status === "complete") {
-          addLog("Attestation retrieved!");
-          return response.data.messages[0];
-        }
-        addLog("Waiting for attestation...");
-        await new Promise((resolve) => setTimeout(resolve, 5000));
-      } catch (error) {
-        if (axios.isAxiosError(error) && error.response?.status === 404) {
-          await new Promise((resolve) => setTimeout(resolve, 5000));
+        const response = await fetch(url);
+        if (response.status === 404) {
+          await new Promise((resolve) => setTimeout(resolve, ATTESTATION_POLL_INTERVAL_MS));
           continue;
         }
+        if (!response.ok) {
+          throw new Error(`Attestation request failed with status ${response.status}`);
+        }
+        const data = await response.json();
+        if (data?.messages?.[0]?.status === "complete") {
+          addLog("Attestation retrieved!");
+          return data.messages[0] as AttestationResponse;
+        }
+        addLog("Waiting for attestation...");
+        await new Promise((resolve) => setTimeout(resolve, ATTESTATION_POLL_INTERVAL_MS));
+      } catch (error) {
         setError("Attestation retrieval failed");
         addLog(
           `Attestation error: ${
@@ -622,27 +455,29 @@ export function useCrossChainTransfer() {
     }
   };
 
-  const mintUSDC = async (
+  // ---------------------------------------------------------------------------
+  // Step 4: Mint — Deliver attestation to destination chain's MessageTransmitter
+  // ---------------------------------------------------------------------------
+
+  const mintEvmUsdc = async (
     client: WalletClient<HttpTransport, Chain, Account>,
     destinationChainId: number,
-    attestation: any
+    attestation: AttestationResponse
   ) => {
-    const MAX_RETRIES = 3;
     let retries = 0;
     setCurrentStep("minting");
     addLog("Minting USDC...");
 
-    while (retries < MAX_RETRIES) {
+    while (retries < MINT_MAX_RETRIES) {
       try {
         const publicClient = createPublicClient({
-          chain: chains[destinationChainId as keyof typeof chains],
+          chain: CHAIN_CONFIGS[destinationChainId as SupportedChainId].viemChain,
           transport: http(),
         });
         const feeData = await publicClient.estimateFeesPerGas();
         const contractConfig = {
-          address: CHAIN_IDS_TO_MESSAGE_TRANSMITTER[
-            destinationChainId
-          ] as `0x${string}`,
+          address: CHAIN_CONFIGS[destinationChainId as SupportedChainId]
+            .messageTransmitter as `0x${string}`,
           abi: [
             {
               type: "function",
@@ -657,7 +492,6 @@ export function useCrossChainTransfer() {
           ] as const,
         };
 
-        // Estimate gas with buffer
         const gasEstimate = await publicClient.estimateContractGas({
           ...contractConfig,
           functionName: "receiveMessage",
@@ -665,8 +499,7 @@ export function useCrossChainTransfer() {
           account: client.account,
         });
 
-        // Add 20% buffer to gas estimate
-        const gasWithBuffer = (gasEstimate * 120n) / 100n;
+        const gasWithBuffer = (gasEstimate * GAS_BUFFER_PERCENT) / 100n;
         addLog(`Gas Used: ${formatUnits(gasWithBuffer, 9)} Gwei`);
 
         const tx = await client.sendTransaction({
@@ -685,10 +518,10 @@ export function useCrossChainTransfer() {
         setCurrentStep("completed");
         break;
       } catch (err) {
-        if (err instanceof TransactionExecutionError && retries < MAX_RETRIES) {
+        if (err instanceof TransactionExecutionError && retries < MINT_MAX_RETRIES) {
           retries++;
-          addLog(`Retry ${retries}/${MAX_RETRIES}...`);
-          await new Promise((resolve) => setTimeout(resolve, 2000 * retries));
+          addLog(`Retry ${retries}/${MINT_MAX_RETRIES}...`);
+          await new Promise((resolve) => setTimeout(resolve, MINT_RETRY_BASE_DELAY_MS * retries));
           continue;
         }
         throw err;
@@ -696,8 +529,7 @@ export function useCrossChainTransfer() {
     }
   };
 
-  // Solana mint function
-  const mintSolanaUSDC = async (keypair: Keypair, attestation: any) => {
+  const mintSolanaUsdc = async (keypair: Keypair, attestation: AttestationResponse) => {
     setCurrentStep("minting");
     addLog("Minting Solana USDC...");
 
@@ -716,33 +548,24 @@ export function useCrossChainTransfer() {
         getPrograms(provider);
 
       const usdcMint = new PublicKey(
-        CHAIN_IDS_TO_USDC_ADDRESSES[SupportedChainId.SOLANA_DEVNET] as string
+        CHAIN_CONFIGS[SupportedChainId.SOLANA_DEVNET].usdcAddress as string
       );
       const messageHex = attestation.message;
       const attestationHex = attestation.attestation;
 
-      // Extract the nonce and source domain from the message
       const nonce = decodeNonceFromMessage(messageHex);
       const messageBuffer = Buffer.from(messageHex.replace("0x", ""), "hex");
       const sourceDomain = messageBuffer.readUInt32BE(4);
 
-      // For EVM to Solana, we need to determine the remote token address
-      // This would typically be the USDC address on the source chain
       let remoteTokenAddressHex = "";
-      // Find the source chain USDC address
-      for (const [chainId, usdcAddress] of Object.entries(
-        CHAIN_IDS_TO_USDC_ADDRESSES
-      )) {
-        if (
-          DESTINATION_DOMAINS[parseInt(chainId)] === sourceDomain &&
-          !isSolanaChain(parseInt(chainId))
-        ) {
-          remoteTokenAddressHex = evmAddressToBytes32(usdcAddress as string);
+      for (const [chainId, config] of Object.entries(CHAIN_CONFIGS)) {
+        const id = parseInt(chainId);
+        if (config.destinationDomain === sourceDomain && !isSolanaChain(id)) {
+          remoteTokenAddressHex = evmAddressToBytes32(config.usdcAddress as string);
           break;
         }
       }
 
-      // Get PDAs for receive message
       const pdas = await getReceiveMessagePdas(
         { messageTransmitterProgram, tokenMessengerMinterProgram },
         usdcMint,
@@ -751,13 +574,11 @@ export function useCrossChainTransfer() {
         nonce
       );
 
-      // Get user's token account
       const userTokenAccount = await getAssociatedTokenAddress(
         usdcMint,
         keypair.publicKey
       );
 
-      // Build account metas array for remaining accounts
       const accountMetas = [
         {
           isSigner: false,
@@ -808,7 +629,6 @@ export function useCrossChainTransfer() {
         },
       ];
 
-      // Call receiveMessage using Circle's official structure
       const receiveMessageTx = await (messageTransmitterProgram as any).methods
         .receiveMessage({
           message: Buffer.from(messageHex.replace("0x", ""), "hex"),
@@ -822,6 +642,8 @@ export function useCrossChainTransfer() {
           usedNonce: pdas.usedNonce,
           receiver: tokenMessengerMinterProgram.programId,
           systemProgram: SystemProgram.programId,
+          eventAuthority: pdas.messageTransmitterEventAuthority.publicKey,
+          program: messageTransmitterProgram.programId,
         })
         .remainingAccounts(accountMetas)
         .signers([keypair])
@@ -846,120 +668,152 @@ export function useCrossChainTransfer() {
     }
   };
 
-  const executeTransfer = async (
-    sourceChainId: number,
-    destinationChainId: number,
-    amount: string,
-    transferType: "fast" | "standard"
-  ) => {
+  // ---------------------------------------------------------------------------
+  // Helpers — Balance checks, client setup, key management
+  // ---------------------------------------------------------------------------
+
+  const getBalance = async (chainId: SupportedChainId) => {
+    if (isSolanaChain(chainId)) {
+      return getSolanaBalance(chainId);
+    }
+    return getEvmBalance(chainId);
+  };
+
+  const getSolanaBalance = async (chainId: SupportedChainId) => {
+    const connection = getSolanaConnection();
+    const privateKey = getPrivateKeyForChain(chainId);
+    const keypair = getSolanaKeypair(privateKey);
+    const usdcMint = new PublicKey(
+      CHAIN_CONFIGS[chainId].usdcAddress as string
+    );
+
     try {
-      const numericAmount = parseUnits(amount, DEFAULT_DECIMALS);
-
-      // Handle different chain types
-      const isSourceSolana = isSolanaChain(sourceChainId);
-      const isDestinationSolana = isSolanaChain(destinationChainId);
-
-      let sourceClient: any, destinationClient: any, defaultDestination: string;
-
-      // Get source client
-      sourceClient = getClients(sourceChainId);
-
-      // Get destination client
-      destinationClient = getClients(destinationChainId);
-
-      // For cross-chain transfers, destination address should be derived from destination chain's private key
-      if (isDestinationSolana) {
-        // Destination is Solana, so get Solana public key
-        const destinationPrivateKey = getPrivateKeyForChain(destinationChainId);
-        const destinationKeypair = getSolanaKeypair(destinationPrivateKey);
-        defaultDestination = destinationKeypair.publicKey.toString();
-      } else {
-        // Destination is EVM, so get EVM address
-        const destinationPrivateKey = getPrivateKeyForChain(destinationChainId);
-        const account = privateKeyToAccount(
-          `0x${destinationPrivateKey.replace(/^0x/, "")}`
-        );
-        defaultDestination = account.address;
-      }
-
-      // Check native balance for destination chain
-      const checkNativeBalance = async (chainId: SupportedChainId) => {
-        if (isSolanaChain(chainId)) {
-          const connection = getSolanaConnection();
-          const privateKey = getPrivateKeyForChain(chainId);
-          const keypair = getSolanaKeypair(privateKey);
-          const balance = await connection.getBalance(keypair.publicKey);
-          return BigInt(balance);
-        } else {
-          const publicClient = createPublicClient({
-            chain: chains[chainId as keyof typeof chains],
-            transport: http(),
-          });
-          const privateKey = getPrivateKeyForChain(chainId);
-          const account = privateKeyToAccount(
-            `0x${privateKey.replace(/^0x/, "")}`
-          );
-          const balance = await publicClient.getBalance({
-            address: account.address,
-          });
-          return balance;
-        }
-      };
-
-      // Execute approve step
-      if (isSourceSolana) {
-        await approveSolanaUSDC(sourceClient, sourceChainId);
-      } else {
-        await approveUSDC(sourceClient, sourceChainId);
-      }
-
-      // Execute burn step
-      let burnTx: string;
-      if (isSourceSolana) {
-        burnTx = await burnSolanaUSDC(
-          sourceClient,
-          numericAmount,
-          destinationChainId,
-          defaultDestination,
-          transferType
-        );
-      } else {
-        burnTx = await burnUSDC(
-          sourceClient,
-          sourceChainId,
-          numericAmount,
-          destinationChainId,
-          defaultDestination,
-          transferType
-        );
-      }
-
-      // Retrieve attestation
-      const attestation = await retrieveAttestation(burnTx, sourceChainId);
-
-      // Check destination chain balance
-      const minBalance = isSolanaChain(destinationChainId)
-        ? BigInt(0.01 * LAMPORTS_PER_SOL) // 0.01 SOL
-        : parseEther("0.01"); // 0.01 native token
-
-      const balance = await checkNativeBalance(destinationChainId);
-      if (balance < minBalance) {
-        throw new Error("Insufficient native token for gas fees");
-      }
-
-      // Execute mint step
-      if (isDestinationSolana) {
-        await mintSolanaUSDC(destinationClient, attestation);
-      } else {
-        await mintUSDC(destinationClient, destinationChainId, attestation);
-      }
-    } catch (error) {
-      setCurrentStep("error");
-      addLog(
-        `Error: ${error instanceof Error ? error.message : "Unknown error"}`
+      const associatedTokenAddress = await getAssociatedTokenAddress(
+        usdcMint,
+        keypair.publicKey
       );
+
+      const tokenAccount = await getAccount(connection, associatedTokenAddress);
+      const balance =
+        Number(tokenAccount.amount) / Math.pow(10, DEFAULT_DECIMALS);
+      return balance.toString();
+    } catch (error) {
+      if (
+        error instanceof TokenAccountNotFoundError ||
+        error instanceof TokenInvalidAccountOwnerError
+      ) {
+        return "0";
+      }
+      throw error;
     }
   };
+
+  const getEvmBalance = async (chainId: SupportedChainId) => {
+    const publicClient = createPublicClient({
+      chain: CHAIN_CONFIGS[chainId as SupportedChainId].viemChain,
+      transport: http(),
+    });
+    const privateKey = getPrivateKeyForChain(chainId);
+    const account = privateKeyToAccount(`0x${privateKey.replace(/^0x/, "")}`, {
+      nonceManager,
+    });
+
+    const balance = await publicClient.readContract({
+      address: CHAIN_CONFIGS[chainId].usdcAddress as `0x${string}`,
+      abi: [
+        {
+          constant: true,
+          inputs: [{ name: "_owner", type: "address" }],
+          name: "balanceOf",
+          outputs: [{ name: "balance", type: "uint256" }],
+          payable: false,
+          stateMutability: "view",
+          type: "function",
+        },
+      ],
+      functionName: "balanceOf",
+      args: [account.address],
+    });
+
+    const formattedBalance = formatUnits(balance, DEFAULT_DECIMALS);
+    return formattedBalance;
+  };
+
+
+
+  const getClients = (chainId: SupportedChainId) => {
+    const privateKey = getPrivateKeyForChain(chainId);
+
+    if (isSolanaChain(chainId)) {
+      return getSolanaKeypair(privateKey);
+    }
+    const account = privateKeyToAccount(`0x${privateKey.replace(/^0x/, "")}`, {
+      nonceManager,
+    });
+    return createWalletClient({
+      chain: CHAIN_CONFIGS[chainId as SupportedChainId].viemChain,
+      transport: http(),
+      account,
+    });
+  };
+
+  const getPrivateKeyForChain = (chainId: number): string => {
+    if (isSolanaChain(chainId)) {
+      const solanaKey = process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY;
+      if (!solanaKey) {
+        throw new Error(
+          "Solana private key not found. Please set NEXT_PUBLIC_SOLANA_PRIVATE_KEY in your environment."
+        );
+      }
+      return solanaKey;
+    } else {
+      const evmKey = process.env.NEXT_PUBLIC_EVM_PRIVATE_KEY;
+      if (!evmKey) {
+        throw new Error(
+          "EVM private key not found. Please set NEXT_PUBLIC_EVM_PRIVATE_KEY in your environment."
+        );
+      }
+      return evmKey;
+    }
+  };
+
+  const getSolanaKeypair = (privateKey: string): Keypair => {
+    try {
+      const privateKeyBytes = bs58.decode(privateKey);
+      if (privateKeyBytes.length === 64) {
+        return Keypair.fromSecretKey(privateKeyBytes);
+      } else if (privateKeyBytes.length === 32) {
+        return Keypair.fromSeed(privateKeyBytes);
+      }
+    } catch (error) {
+      const cleanPrivateKey = privateKey.replace(/^0x/, "");
+      if (cleanPrivateKey.length === 64) {
+        const privateKeyBytes = new Uint8Array(32);
+        for (let i = 0; i < 32; i++) {
+          privateKeyBytes[i] = parseInt(cleanPrivateKey.substring(i * 2, i * 2 + 2), 16);
+        }
+        return Keypair.fromSeed(privateKeyBytes);
+      }
+    }
+
+    throw new Error(
+      "Invalid Solana private key format. Expected base58 encoded key or 32-byte hex string."
+    );
+  };
+
+  const getSolanaConnection = (): Connection => {
+    return new Connection(SOLANA_RPC_ENDPOINT, "confirmed");
+  };
+
+  const isSolanaChain = (chainId: number): boolean => {
+    return chainId === SupportedChainId.SOLANA_DEVNET;
+  };
+
+  const addLog = (message: string) =>
+    setLogs((prev) => [
+      ...prev,
+      `[${new Date().toLocaleTimeString()}] ${message}`,
+    ]);
 
   const reset = () => {
     setCurrentStep("idle");

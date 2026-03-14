@@ -23,13 +23,11 @@ import { useState, useEffect, useRef } from "react";
 interface TimerProps {
   isRunning: boolean;
   onTick?: (seconds: number) => void;
-  initialSeconds?: number;
 }
 
 export function Timer({ isRunning, onTick }: TimerProps) {
   const startTimeRef = useRef<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
-  const animationRef = useRef<number | undefined>(undefined);
   const onTickRef = useRef(onTick);
   useEffect(() => {
     onTickRef.current = onTick;
@@ -44,25 +42,17 @@ export function Timer({ isRunning, onTick }: TimerProps) {
   }, [isRunning]);
 
   useEffect(() => {
-    const animate = () => {
+    if (!isRunning) return;
+
+    const interval = setInterval(() => {
       if (startTimeRef.current !== null) {
-        const now = Date.now();
-        const newElapsed = Math.floor((now - startTimeRef.current) / 1000);
+        const newElapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
         setElapsed(newElapsed);
         onTickRef.current?.(newElapsed);
       }
-      animationRef.current = requestAnimationFrame(animate);
-    };
+    }, 1000);
 
-    if (isRunning) {
-      animationRef.current = requestAnimationFrame(animate);
-    }
-
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
+    return () => clearInterval(interval);
   }, [isRunning]);
 
   const minutes = Math.floor(elapsed / 60);
