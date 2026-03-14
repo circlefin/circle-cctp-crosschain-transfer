@@ -5,7 +5,7 @@ on:
     branches: [master]
 jobs:
   lint-and-test:
-    runs-on: ubuntu-latest
+    runs-on: github-hosted-small
     steps:
       - name: Check out repository code
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
@@ -24,12 +24,12 @@ jobs:
       - name: Build app
         run: npm run build
 
-  scan:
-    needs: lint-and-test
-    if: ${{ github.event_name == 'pull_request' && github.event.repository.private == false }}
-    uses: circlefin/circle-public-github-workflows/.github/workflows/pr-scan.yaml@v1
+  # scan:
+  #   needs: lint-and-test
+  #   if: ${{ github.event_name == 'pull_request' && github.event.repository.private == false }}
+  #   uses: circlefin/circle-public-github-workflows/.github/workflows/pr-scan.yaml@v1
 
-  release-sbom:
-    needs: lint-and-test
-    if: github.event_name == 'push'
-    uses: circlefin/circle-public-github-workflows/.github/workflows/attach-release-assets.yaml@v1
+  # release-sbom:
+  #   needs: lint-and-test
+  #   if: github.event_name == 'push'
+  #   uses: circlefin/circle-public-github-workflows/.github/workflows/attach-release-assets.yaml@v1

@@ -35,7 +35,7 @@ import { Label } from "@/components/ui/label";
 import {
   SupportedChainId,
   SUPPORTED_CHAINS,
-  CHAIN_TO_CHAIN_NAME,
+  CHAIN_CONFIGS,
 } from "@/lib/chains";
 import { ProgressSteps } from "@/components/progress-step";
 import { TransferLog } from "@/components/transfer-log";
@@ -131,7 +131,7 @@ export default function Home() {
                 <SelectContent>
                   {SUPPORTED_CHAINS.map((chainId) => (
                     <SelectItem key={chainId} value={String(chainId)}>
-                      {CHAIN_TO_CHAIN_NAME[chainId]}
+                      {CHAIN_CONFIGS[chainId].name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -153,7 +153,7 @@ export default function Home() {
                     (chainId) => chainId !== sourceChain,
                   ).map((chainId) => (
                     <SelectItem key={chainId} value={String(chainId)}>
-                      {CHAIN_TO_CHAIN_NAME[chainId]}
+                      {CHAIN_CONFIGS[chainId].name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -189,7 +189,6 @@ export default function Home() {
             ) : (
               <Timer
                 isRunning={isTransferring}
-                initialSeconds={elapsedSeconds}
                 onTick={setElapsedSeconds}
               />
             )}
@@ -202,7 +201,7 @@ export default function Home() {
           <div className="flex justify-center gap-4">
             <Button
               onClick={handleStartTransfer}
-              disabled={isTransferring || currentStep === "completed"}
+              disabled={isTransferring || currentStep === "completed" || !amount || parseFloat(amount) <= 0}
             >
               {currentStep === "completed"
                 ? "Transfer Complete"
