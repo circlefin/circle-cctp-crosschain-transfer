@@ -41,6 +41,14 @@ import { ProgressSteps } from "@/components/progress-step";
 import { TransferLog } from "@/components/transfer-log";
 import { Timer } from "@/components/timer";
 import { TransferTypeSelector } from "@/components/transfer-type";
+import {
+  connectEvmWallet,
+  connectSolanaWallet,
+  discoverEvmWallets,
+  disconnectSolanaWallet,
+  type EvmProviderOption,
+  type WalletConnections,
+} from "@/lib/browser-wallets";
 
 export default function Home() {
   const { currentStep, logs, error, executeTransfer, getBalance, reset } =
@@ -57,17 +65,36 @@ export default function Home() {
   const [showFinalTime, setShowFinalTime] = useState(false);
   const [transferType, setTransferType] = useState<"fast" | "standard">("fast");
   const [balance, setBalance] = useState("0");
+  const [wallets, setWallets] = useState<WalletConnections>({
+    evm: null,
+    solana: null,
+  });
+  const [evmWalletOptions, setEvmWalletOptions] = useState<EvmProviderOption[]>(
+    [],
+  );
+  const [showEvmWalletPicker, setShowEvmWalletPicker] = useState(false);
+
+  const needsEvmWallet =
+    sourceChain !== SupportedChainId.SOLANA_DEVNET ||
+    destinationChain !== SupportedChainId.SOLANA_DEVNET;
+  const needsSolanaWallet =
+    sourceChain === SupportedChainId.SOLANA_DEVNET ||
+    destinationChain === SupportedChainId.SOLANA_DEVNET;
+  const missingRequiredWallet =
+    (needsEvmWallet && !wallets.evm) || (needsSolanaWallet && !wallets.solana);
 
   const handleStartTransfer = async () => {
     setIsTransferring(true);
     setShowFinalTime(false);
     setElapsedSeconds(0);
     try {
+      reset();
       await executeTransfer(
         sourceChain,
         destinationChain,
         amount,
         transferType,
+        wallets,
       );
     } catch (error) {
       console.error("Transfer failed:", error);
@@ -84,10 +111,60 @@ export default function Home() {
     setElapsedSeconds(0);
   };
 
+  const handleEvmWalletClick = async () => {
+    if (wallets.evm) {
+      setWallets((current) => ({ ...current, evm: null }));
+      return;
+    }
+
+    try {
+      const options = await discoverEvmWallets();
+      if (options.length > 1) {
+        setEvmWalletOptions(options);
+        setShowEvmWalletPicker(true);
+        return;
+      }
+
+      const connection = await connectEvmWallet(options[0]);
+      setWallets((current) => ({ ...current, evm: connection }));
+    } catch (error) {
+      console.error("Failed to connect EVM wallet:", error);
+    }
+  };
+
+  const handleEvmWalletSelect = async (provider: EvmProviderOption) => {
+    try {
+      const connection = await connectEvmWallet(provider);
+      setWallets((current) => ({ ...current, evm: connection }));
+      setShowEvmWalletPicker(false);
+    } catch (error) {
+      console.error("Failed to connect selected EVM wallet:", error);
+    }
+  };
+
+  const handleSolanaWalletClick = async () => {
+    if (wallets.solana) {
+      try {
+        await disconnectSolanaWallet(wallets.solana);
+      } catch (error) {
+        console.error("Failed to disconnect Solana wallet:", error);
+      }
+      setWallets((current) => ({ ...current, solana: null }));
+      return;
+    }
+
+    try {
+      const connection = await connectSolanaWallet();
+      setWallets((current) => ({ ...current, solana: connection }));
+    } catch (error) {
+      console.error("Failed to connect Solana wallet:", error);
+    }
+  };
+
   useEffect(() => {
     const wrapper = async () => {
       try {
-        const balance = await getBalance(sourceChain);
+        const balance = await getBalance(sourceChain, wallets);
         setBalance(balance);
       } catch (error) {
         console.error("Failed to get balance:", error);
@@ -95,7 +172,14 @@ export default function Home() {
       }
     };
     wrapper();
-  }, [sourceChain, getBalance]);
+  }, [sourceChain, wallets, getBalance]);
+
+  const formatAddress = (address: string | null) => {
+    if (!address) {
+      return null;
+    }
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
 
   return (
     <div className="min-h-screen bg-gray-100 p-8">
@@ -106,6 +190,50 @@ export default function Home() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
+            <div className="text-center">
+              <Button variant="outline" onClick={handleEvmWalletClick}>
+                {wallets.evm ? "Disconnect EVM Wallet" : "Connect EVM Wallet"}
+              </Button>
+              <p className="text-sm text-muted-foreground mt-2">
+                {wallets.evm
+                  ? `${formatAddress(wallets.evm.address)}${
+                      wallets.evm.providerInfo?.name
+                        ? ` (${wallets.evm.providerInfo.name})`
+                        : ""
+                    }`
+                  : "Required for EVM source or destination chains"}
+              </p>
+              {showEvmWalletPicker && (
+                <div className="mt-3 space-y-2 rounded-lg border bg-white p-3 text-left">
+                  <p className="text-sm font-medium">Choose EVM wallet</p>
+                  <div className="flex gap-3">
+                    {evmWalletOptions.map((option) => (
+                      <Button
+                        key={option.info.uuid}
+                        variant="outline"
+                        onClick={() => handleEvmWalletSelect(option)}
+                      >
+                        {option.info.name}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="text-center">
+              <Button variant="outline" onClick={handleSolanaWalletClick}>
+                {wallets.solana
+                  ? "Disconnect Solana Wallet"
+                  : "Connect Solana Wallet"}
+              </Button>
+              <p className="text-sm text-muted-foreground mt-2">
+                {wallets.solana
+                  ? formatAddress(wallets.solana.address)
+                  : "Required for Solana source or destination chains"}
+              </p>
+            </div>
+          </div>
           <div className="space-y-2">
             <Label>Transfer Type</Label>
             <TransferTypeSelector
@@ -187,10 +315,7 @@ export default function Home() {
                 <span>{(elapsedSeconds % 60).toString().padStart(2, "0")}</span>
               </div>
             ) : (
-              <Timer
-                isRunning={isTransferring}
-                onTick={setElapsedSeconds}
-              />
+              <Timer isRunning={isTransferring} onTick={setElapsedSeconds} />
             )}
           </div>
 
@@ -201,7 +326,13 @@ export default function Home() {
           <div className="flex justify-center gap-4">
             <Button
               onClick={handleStartTransfer}
-              disabled={isTransferring || currentStep === "completed" || !amount || parseFloat(amount) <= 0}
+              disabled={
+                isTransferring ||
+                currentStep === "completed" ||
+                !amount ||
+                parseFloat(amount) <= 0 ||
+                missingRequiredWallet
+              }
             >
               {currentStep === "completed"
                 ? "Transfer Complete"
