@@ -38,38 +38,12 @@ export interface FindProgramAddressResponse {
   bump: number;
 }
 
-// Create a wallet from a Keypair for Anchor provider
-export class NodeWallet implements anchor.Wallet {
-  constructor(readonly payer: Keypair) {}
-
-  async signTransaction<T extends Transaction | VersionedTransaction>(
-    tx: T
-  ): Promise<T> {
-    if (isVersionedTransaction(tx)) {
-      tx.sign([this.payer]);
-    } else {
-      tx.partialSign(this.payer);
-    }
-
-    return tx;
-  }
-
-  async signAllTransactions<T extends Transaction | VersionedTransaction>(
+export interface SolanaAnchorWalletProvider {
+  publicKey: PublicKey;
+  signTransaction<T extends Transaction | VersionedTransaction>(tx: T): Promise<T>;
+  signAllTransactions?<T extends Transaction | VersionedTransaction>(
     txs: T[]
-  ): Promise<T[]> {
-    return txs.map((t) => {
-      if (isVersionedTransaction(t)) {
-        t.sign([this.payer]);
-      } else {
-        t.partialSign(this.payer);
-      }
-      return t;
-    });
-  }
-
-  get publicKey(): PublicKey {
-    return this.payer.publicKey;
-  }
+  ): Promise<T[]>;
 }
 
 export const isVersionedTransaction = (
@@ -80,11 +54,19 @@ export const isVersionedTransaction = (
 
 // Configure client to use the provider and return it
 export const getAnchorConnection = (
-  keypair: Keypair,
+  walletProvider: SolanaAnchorWalletProvider,
   rpcUrl: string = SOLANA_RPC_ENDPOINT
 ) => {
   const connection = new anchor.web3.Connection(rpcUrl, "confirmed");
-  const wallet = new NodeWallet(keypair);
+  const wallet: anchor.Wallet = {
+    payer: Keypair.generate(),
+    publicKey: walletProvider.publicKey,
+    signTransaction: (tx) => walletProvider.signTransaction(tx),
+    signAllTransactions: (txs) =>
+      walletProvider.signAllTransactions
+        ? walletProvider.signAllTransactions(txs)
+        : Promise.all(txs.map((tx) => walletProvider.signTransaction(tx))),
+  };
   const provider = new anchor.AnchorProvider(connection, wallet, {
     preflightCommitment: "confirmed",
   });
