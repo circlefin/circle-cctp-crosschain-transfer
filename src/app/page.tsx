@@ -190,7 +190,7 @@ export default function Home() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4 mb-3">
             <div className="text-center">
               <Button variant="outline" onClick={handleEvmWalletClick}>
                 {wallets.evm ? "Disconnect EVM Wallet" : "Connect EVM Wallet"}
@@ -234,6 +234,10 @@ export default function Home() {
               </p>
             </div>
           </div>
+          <p className="text-sm text-center">
+              Make sure your wallet can complete the transfer on the destination
+              chain.
+            </p>
           <div className="space-y-2">
             <Label>Transfer Type</Label>
             <TransferTypeSelector

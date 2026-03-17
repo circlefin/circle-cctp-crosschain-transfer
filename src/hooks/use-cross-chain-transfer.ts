@@ -185,7 +185,7 @@ export function useCrossChainTransfer() {
     addLog("Approving USDC transfer...");
 
     try {
-      await ensureWalletReadyForEvmChain(sourceChainId, wallets);
+      await switchEvmWalletToChain(sourceChainId, wallets);
       if (!client.account) {
         throw new Error("Connect an EVM wallet to continue.");
       }
@@ -245,7 +245,7 @@ export function useCrossChainTransfer() {
     addLog("Burning USDC...");
 
     try {
-      await ensureWalletReadyForEvmChain(sourceChainId, wallets);
+      await switchEvmWalletToChain(sourceChainId, wallets);
       if (!client.account) {
         throw new Error("Connect an EVM wallet to continue.");
       }
@@ -392,7 +392,7 @@ export function useCrossChainTransfer() {
         mintRecipient = new PublicKey(hexToBytes(bytes32Address as Hex));
       }
 
-      const evmAddress = getRequiredEvmWallet(wallets).address;
+      const evmAddress = `0x${destinationAddress.replace(/^0x/, "")}`;
       const destinationCaller = new PublicKey(
         hexToBytes(evmAddressToBytes32(evmAddress) as Hex)
       );
@@ -511,7 +511,7 @@ export function useCrossChainTransfer() {
 
     while (retries < MINT_MAX_RETRIES) {
       try {
-        await ensureWalletReadyForEvmChain(destinationChainId, wallets);
+        await switchEvmWalletToChain(destinationChainId, wallets);
         if (!client.account) {
           throw new Error("Connect an EVM wallet to continue.");
         }
@@ -911,14 +911,23 @@ export function useCrossChainTransfer() {
     return getRequiredEvmWallet(wallets).address;
   };
 
-  const ensureWalletReadyForEvmChain = async (
+  const switchEvmWalletToChain = async (
     chainId: number,
     wallets: WalletConnections
   ) => {
-    await ensureEvmChain(
-      getRequiredEvmWallet(wallets).provider,
-      chainId as SupportedChainId
-    );
+    const evmWallet = getRequiredEvmWallet(wallets);
+    try {
+      await ensureEvmChain(
+        evmWallet.provider,
+        chainId as SupportedChainId
+      );
+    } catch (error) {
+      const walletName = evmWallet.providerInfo?.name ?? "Selected EVM wallet";
+      const chainName = CHAIN_CONFIGS[chainId as SupportedChainId].name;
+      throw new Error(
+        `${walletName} could not switch to ${chainName}. The wallet may not support this chain.`
+      );
+    }
   };
 
   const reset = () => {
