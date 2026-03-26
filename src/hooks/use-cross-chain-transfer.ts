@@ -845,9 +845,14 @@ export function useCrossChainTransfer() {
   ) => {
     const sourceDomain = CHAIN_CONFIGS[sourceChainId].destinationDomain;
     const destinationDomain = CHAIN_CONFIGS[destinationChainId].destinationDomain;
-    const response = await fetch(
-      `${IRIS_API_URL}/v2/burn/USDC/fees/${sourceDomain}/${destinationDomain}`
+    const feeUrl = `${IRIS_API_URL}/v2/burn/USDC/fees/${sourceDomain}/${destinationDomain}`;
+
+    addLog(
+      `Fetching fast transfer fee for domain ${sourceDomain} -> ${destinationDomain}`
     );
+    addLog(`Fee URL: ${feeUrl}`);
+
+    const response = await fetch(feeUrl);
 
     if (!response.ok) {
       throw new Error(`Fee request failed with status ${response.status}`);
