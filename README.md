@@ -44,18 +44,21 @@ The app will be running at `http://localhost:3000`.
 
 - Arbitrum Sepolia
 - Arc Testnet
-- Avalanche Fuji C-Chain
+- Avalanche Fuji
 - Base Sepolia
 - Codex Testnet
 - Edge Testnet
 - Ethereum Sepolia
 - HyperEVM Testnet
+- Injective Testnet
 - Ink Sepolia
 - Linea Sepolia
 - Monad Testnet
+- Morph Hoodi
 - Optimism Sepolia
+- Pharos Atlantic
 - Plume Sepolia
-- Polygon PoS Amoy
+- Polygon Amoy
 - Sei Testnet
 - Solana Devnet
 - Sonic Testnet
