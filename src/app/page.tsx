@@ -207,7 +207,7 @@ export default function Home() {
               {showEvmWalletPicker && (
                 <div className="mt-3 space-y-2 rounded-lg border bg-white p-3 text-left">
                   <p className="text-sm font-medium">Choose EVM wallet</p>
-                  <div className="flex gap-3">
+                  <div className="flex gap-3 flex-wrap">
                     {evmWalletOptions.map((option) => (
                       <Button
                         key={option.info.uuid}

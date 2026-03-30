@@ -54,6 +54,7 @@ export enum SupportedChainId {
   MONAD_TESTNET = 10143,
   MORPH_HOODI = 2910,
   OPTIMISM_SEPOLIA = 11155420,
+  PHAROS_ATLANTIC = 688689,
   PLUME_SEPOLIA = 98867,
   POLYGON_AMOY = 80002,
   SEI_TESTNET = 1328,
@@ -91,6 +92,20 @@ const morphHoodi = defineChain({
   rpcUrls: { default: { http: ["https://rpc-hoodi.morph.network"] } },
   blockExplorers: {
     default: { name: "Morph Hoodi Explorer", url: "https://explorer-hoodi.morph.network" },
+  },
+  testnet: true,
+});
+
+const pharosAtlantic = defineChain({
+  id: 688689,
+  name: "Pharos Atlantic",
+  nativeCurrency: { decimals: 18, name: "PHRS", symbol: "PHRS" },
+  rpcUrls: { default: { http: ["https://atlantic.dplabs-internal.com"] } },
+  blockExplorers: {
+    default: {
+      name: "Pharos Testnet Explorer",
+      url: "https://atlantic.pharosscan.xyz/",
+    },
   },
   testnet: true,
 });
@@ -207,6 +222,14 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
     messageTransmitter: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
     destinationDomain: 2,
+  },
+  [SupportedChainId.PHAROS_ATLANTIC]: {
+    name: "Pharos Atlantic",
+    viemChain: pharosAtlantic,
+    usdcAddress: "0xcfc8330f4bcab529c625d12781b1c19466a9fc8b",
+    tokenMessenger: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
+    messageTransmitter: "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
+    destinationDomain: 31,
   },
   [SupportedChainId.PLUME_SEPOLIA]: {
     name: "Plume Sepolia",
