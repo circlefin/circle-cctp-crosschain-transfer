@@ -19,24 +19,24 @@
     "bs58": "^6.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "lucide-react": "^0.577.0",
-    "next": "16.1.7",
+    "lucide-react": "^1.7.0",
+    "next": "16.2.2",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "tailwind-merge": "^3.5.0",
     "tailwindcss-animate": "^1.0.7",
-    "viem": "^2.47.4"
+    "viem": "^2.47.10"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.2.1",
+    "@tailwindcss/postcss": "^4.2.2",
     "@types/node": "^25",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "eslint": "^9.39.1",
-    "eslint-config-next": "^16.1.6",
+    "eslint": "9.39.4",
+    "eslint-config-next": "^16.2.2",
     "postcss": "^8",
     "tailwindcss": "^4.2.2",
-    "typescript": "^5"
+    "typescript": "^6"
   },
   "overrides": {
     "bigint-buffer": "npm:@trufflesuite/bigint-buffer@1.1.10"
