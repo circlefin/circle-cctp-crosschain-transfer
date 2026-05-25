@@ -519,7 +519,6 @@ export function useCrossChainTransfer() {
           chain: CHAIN_CONFIGS[destinationChainId as SupportedChainId].viemChain,
           transport: http(),
         });
-        const feeData = await publicClient.estimateFeesPerGas();
         const contractConfig = {
           address: CHAIN_CONFIGS[destinationChainId as SupportedChainId]
             .messageTransmitter as `0x${string}`,
@@ -557,8 +556,6 @@ export function useCrossChainTransfer() {
             args: [attestation.message, attestation.attestation],
           }),
           gas: gasWithBuffer,
-          maxFeePerGas: feeData.maxFeePerGas,
-          maxPriorityFeePerGas: feeData.maxPriorityFeePerGas,
         });
 
         addLog(`Mint Tx: ${tx}`);
