@@ -558,7 +558,15 @@ export function useCrossChainTransfer() {
           gas: gasWithBuffer,
         });
 
-        addLog(`Mint Tx: ${tx}`);
+        addLog(`Mint Tx submitted: ${tx}`);
+        const receipt = await publicClient.waitForTransactionReceipt({
+          hash: tx,
+        });
+        if (receipt.status !== "success") {
+          throw new Error(`Mint transaction reverted: ${tx}`);
+        }
+
+        addLog(`Mint Tx confirmed: ${tx}`);
         setCurrentStep("completed");
         break;
       } catch (err) {
@@ -568,6 +576,7 @@ export function useCrossChainTransfer() {
           await new Promise((resolve) => setTimeout(resolve, MINT_RETRY_BASE_DELAY_MS * retries));
           continue;
         }
+        setError("Mint failed");
         throw err;
       }
     }
