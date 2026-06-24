@@ -31,12 +31,7 @@ import {
   hexToBytes,
 } from "viem";
 
-import {
-  Connection,
-  Keypair,
-  PublicKey,
-  SystemProgram,
-} from "@solana/web3.js";
+import { Connection, Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
 import {
   getAssociatedTokenAddress,
   getAccount,
@@ -87,7 +82,8 @@ const MINT_MAX_RETRIES = 3;
 const MINT_RETRY_BASE_DELAY_MS = 2000;
 const GAS_BUFFER_PERCENT = 120n;
 const FAST_FEE_BUFFER_PERCENT = 120n;
-const BYTES32_ZERO = "0x0000000000000000000000000000000000000000000000000000000000000000" as Hex;
+const BYTES32_ZERO =
+  "0x0000000000000000000000000000000000000000000000000000000000000000" as Hex;
 
 export function useCrossChainTransfer() {
   const [currentStep, setCurrentStep] = useState<TransferStep>("idle");
@@ -104,7 +100,7 @@ export function useCrossChainTransfer() {
     destinationChainId: number,
     amount: string,
     transferType: "fast" | "standard",
-    wallets: WalletConnections
+    wallets: WalletConnections,
   ) => {
     try {
       const numericAmount = parseUnits(amount, DEFAULT_DECIMALS);
@@ -116,7 +112,7 @@ export function useCrossChainTransfer() {
       const destinationClient = getClients(destinationChainId, wallets);
       const defaultDestination = getDestinationAddress(
         destinationChainId,
-        wallets
+        wallets,
       );
 
       // Step 1: Approve
@@ -127,7 +123,7 @@ export function useCrossChainTransfer() {
           sourceClient as EvmClient,
           sourceChainId,
           numericAmount,
-          wallets
+          wallets,
         );
       }
 
@@ -140,7 +136,7 @@ export function useCrossChainTransfer() {
           destinationChainId,
           defaultDestination,
           transferType,
-          wallets
+          wallets,
         );
       } else {
         burnTx = await burnEvmUsdc(
@@ -150,7 +146,7 @@ export function useCrossChainTransfer() {
           destinationChainId,
           defaultDestination,
           transferType,
-          wallets
+          wallets,
         );
       }
 
@@ -159,9 +155,17 @@ export function useCrossChainTransfer() {
 
       // Step 4: Mint
       if (isDestinationSolana) {
-        await mintSolanaUsdc(destinationClient as SolanaWalletConnection, attestation);
+        await mintSolanaUsdc(
+          destinationClient as SolanaWalletConnection,
+          attestation,
+        );
       } else {
-        await mintEvmUsdc(destinationClient as EvmClient, destinationChainId, attestation, wallets);
+        await mintEvmUsdc(
+          destinationClient as EvmClient,
+          destinationChainId,
+          attestation,
+          wallets,
+        );
       }
     } catch (error) {
       setCurrentStep("error");
@@ -177,51 +181,48 @@ export function useCrossChainTransfer() {
     client: EvmClient,
     sourceChainId: number,
     amount: bigint,
-    wallets: WalletConnections
+    wallets: WalletConnections,
   ) => {
     setCurrentStep("approving");
     addLog("Approving USDC transfer...");
 
-    try {
-      await switchEvmWalletToChain(sourceChainId, wallets);
-      if (!client.account) {
-        throw new Error("Connect an EVM wallet to continue.");
-      }
-      const tx = await client.sendTransaction({
-        account: client.account,
-        chain: client.chain,
-        to: CHAIN_CONFIGS[sourceChainId as SupportedChainId].usdcAddress as `0x${string}`,
-        data: encodeFunctionData({
-          abi: [
-            {
-              type: "function",
-              name: "approve",
-              stateMutability: "nonpayable",
-              inputs: [
-                { name: "spender", type: "address" },
-                { name: "amount", type: "uint256" },
-              ],
-              outputs: [{ name: "", type: "bool" }],
-            },
-          ],
-          functionName: "approve",
-          args: [
-            CHAIN_CONFIGS[sourceChainId as SupportedChainId].tokenMessenger as `0x${string}`,
-            amount,
-          ],
-        }),
-      });
-
-      addLog(`USDC Approval Tx: ${tx}`);
-      await createPublicClient({
-        chain: CHAIN_CONFIGS[sourceChainId as SupportedChainId].viemChain,
-        transport: http(),
-      }).waitForTransactionReceipt({ hash: tx });
-      return tx;
-    } catch (err) {
-      setError("Approval failed");
-      throw err;
+    await switchEvmWalletToChain(sourceChainId, wallets);
+    if (!client.account) {
+      throw new Error("Connect an EVM wallet to continue.");
     }
+    const tx = await client.sendTransaction({
+      account: client.account,
+      chain: client.chain,
+      to: CHAIN_CONFIGS[sourceChainId as SupportedChainId]
+        .usdcAddress as `0x${string}`,
+      data: encodeFunctionData({
+        abi: [
+          {
+            type: "function",
+            name: "approve",
+            stateMutability: "nonpayable",
+            inputs: [
+              { name: "spender", type: "address" },
+              { name: "amount", type: "uint256" },
+            ],
+            outputs: [{ name: "", type: "bool" }],
+          },
+        ],
+        functionName: "approve",
+        args: [
+          CHAIN_CONFIGS[sourceChainId as SupportedChainId]
+            .tokenMessenger as `0x${string}`,
+          amount,
+        ],
+      }),
+    });
+
+    addLog(`USDC Approval Tx: ${tx}`);
+    await createPublicClient({
+      chain: CHAIN_CONFIGS[sourceChainId as SupportedChainId].viemChain,
+      transport: http(),
+    }).waitForTransactionReceipt({ hash: tx });
+    return tx;
   };
 
   // SPL tokens don't require explicit approval like ERC20; the burn handles authorization
@@ -241,88 +242,89 @@ export function useCrossChainTransfer() {
     destinationChainId: number,
     destinationAddress: string,
     transferType: "fast" | "standard",
-    wallets: WalletConnections
+    wallets: WalletConnections,
   ) => {
     setCurrentStep("burning");
     addLog("Burning USDC...");
 
-    try {
-      await switchEvmWalletToChain(sourceChainId, wallets);
-      if (!client.account) {
-        throw new Error("Connect an EVM wallet to continue.");
-      }
-      const finalityThreshold = transferType === "fast" ? FAST_FINALITY_THRESHOLD : STANDARD_FINALITY_THRESHOLD;
-      const maxFee =
-        transferType === "fast"
-          ? await getBufferedFastTransferFee(
-              sourceChainId as SupportedChainId,
-              destinationChainId as SupportedChainId,
-              amount
-            )
-          : 0n;
-
-      let mintRecipient: string;
-      if (isSolanaChain(destinationChainId)) {
-        const usdcMint = new PublicKey(
-          CHAIN_CONFIGS[SupportedChainId.SOLANA_DEVNET].usdcAddress as string
-        );
-        const destinationWallet = new PublicKey(destinationAddress);
-        const tokenAccount = await getAssociatedTokenAddress(
-          usdcMint,
-          destinationWallet
-        );
-        mintRecipient = toHex(bs58.decode(tokenAccount.toBase58()));
-      } else {
-        mintRecipient = `0x${destinationAddress
-          .replace(/^0x/, "")
-          .padStart(64, "0")}`;
-      }
-
-      const tx = await client.sendTransaction({
-        account: client.account,
-        chain: client.chain,
-        to: CHAIN_CONFIGS[sourceChainId as SupportedChainId].tokenMessenger as `0x${string}`,
-        data: encodeFunctionData({
-          abi: [
-            {
-              type: "function",
-              name: "depositForBurn",
-              stateMutability: "nonpayable",
-              inputs: [
-                { name: "amount", type: "uint256" },
-                { name: "destinationDomain", type: "uint32" },
-                { name: "mintRecipient", type: "bytes32" },
-                { name: "burnToken", type: "address" },
-                { name: "hookData", type: "bytes32" },
-                { name: "maxFee", type: "uint256" },
-                { name: "finalityThreshold", type: "uint32" },
-              ],
-              outputs: [],
-            },
-          ],
-          functionName: "depositForBurn",
-          args: [
-            amount,
-            CHAIN_CONFIGS[destinationChainId as SupportedChainId].destinationDomain,
-            mintRecipient as Hex,
-            CHAIN_CONFIGS[sourceChainId as SupportedChainId].usdcAddress as `0x${string}`,
-            BYTES32_ZERO,
-            maxFee,
-            finalityThreshold,
-          ],
-        }),
-      });
-
-      addLog(`Burn Tx: ${tx}`);
-      await createPublicClient({
-        chain: CHAIN_CONFIGS[sourceChainId as SupportedChainId].viemChain,
-        transport: http(),
-      }).waitForTransactionReceipt({ hash: tx });
-      return tx;
-    } catch (err) {
-      setError("Burn failed");
-      throw err;
+    await switchEvmWalletToChain(sourceChainId, wallets);
+    if (!client.account) {
+      throw new Error("Connect an EVM wallet to continue.");
     }
+    const finalityThreshold =
+      transferType === "fast"
+        ? FAST_FINALITY_THRESHOLD
+        : STANDARD_FINALITY_THRESHOLD;
+    const maxFee =
+      transferType === "fast"
+        ? await getBufferedFastTransferFee(
+            sourceChainId as SupportedChainId,
+            destinationChainId as SupportedChainId,
+            amount,
+          )
+        : 0n;
+
+    let mintRecipient: string;
+    if (isSolanaChain(destinationChainId)) {
+      const usdcMint = new PublicKey(
+        CHAIN_CONFIGS[SupportedChainId.SOLANA_DEVNET].usdcAddress as string,
+      );
+      const destinationWallet = new PublicKey(destinationAddress);
+      const tokenAccount = await getAssociatedTokenAddress(
+        usdcMint,
+        destinationWallet,
+      );
+      mintRecipient = toHex(bs58.decode(tokenAccount.toBase58()));
+    } else {
+      mintRecipient = `0x${destinationAddress
+        .replace(/^0x/, "")
+        .padStart(64, "0")}`;
+    }
+
+    const tx = await client.sendTransaction({
+      account: client.account,
+      chain: client.chain,
+      to: CHAIN_CONFIGS[sourceChainId as SupportedChainId]
+        .tokenMessenger as `0x${string}`,
+      data: encodeFunctionData({
+        abi: [
+          {
+            type: "function",
+            name: "depositForBurn",
+            stateMutability: "nonpayable",
+            inputs: [
+              { name: "amount", type: "uint256" },
+              { name: "destinationDomain", type: "uint32" },
+              { name: "mintRecipient", type: "bytes32" },
+              { name: "burnToken", type: "address" },
+              { name: "hookData", type: "bytes32" },
+              { name: "maxFee", type: "uint256" },
+              { name: "finalityThreshold", type: "uint32" },
+            ],
+            outputs: [],
+          },
+        ],
+        functionName: "depositForBurn",
+        args: [
+          amount,
+          CHAIN_CONFIGS[destinationChainId as SupportedChainId]
+            .destinationDomain,
+          mintRecipient as Hex,
+          CHAIN_CONFIGS[sourceChainId as SupportedChainId]
+            .usdcAddress as `0x${string}`,
+          BYTES32_ZERO,
+          maxFee,
+          finalityThreshold,
+        ],
+      }),
+    });
+
+    addLog(`Burn Tx: ${tx}`);
+    await createPublicClient({
+      chain: CHAIN_CONFIGS[sourceChainId as SupportedChainId].viemChain,
+      transport: http(),
+    }).waitForTransactionReceipt({ hash: tx });
+    return tx;
   };
 
   const burnSolanaUsdc = async (
@@ -331,127 +333,123 @@ export function useCrossChainTransfer() {
     destinationChainId: number,
     destinationAddress: string,
     transferType: "fast" | "standard",
-    wallets: WalletConnections
+    wallets: WalletConnections,
   ) => {
     setCurrentStep("burning");
     addLog("Burning Solana USDC...");
 
-    try {
-      const {
-        getAnchorConnection,
-        getPrograms,
-        getDepositForBurnPdas,
-        evmAddressToBytes32,
-      } = await import("@/lib/solana-utils");
-      const { getAssociatedTokenAddress } = await import("@solana/spl-token");
-      const walletPublicKey = wallet.provider.publicKey;
-      if (!walletPublicKey) {
-        throw new Error("Connect a Solana wallet to continue.");
-      }
-
-      const provider = getAnchorConnection(
-        {
-          publicKey: walletPublicKey,
-          signTransaction: wallet.provider.signTransaction.bind(wallet.provider),
-          signAllTransactions: wallet.provider.signAllTransactions?.bind(
-            wallet.provider
-          ),
-        },
-        SOLANA_RPC_ENDPOINT
-      );
-      const { messageTransmitterProgram, tokenMessengerMinterProgram } =
-        getPrograms(provider);
-
-      const usdcMint = new PublicKey(
-        CHAIN_CONFIGS[SupportedChainId.SOLANA_DEVNET].usdcAddress as string
-      );
-
-      const pdas = getDepositForBurnPdas(
-        { messageTransmitterProgram, tokenMessengerMinterProgram },
-        usdcMint,
-        CHAIN_CONFIGS[destinationChainId as SupportedChainId].destinationDomain,
-        walletPublicKey
-      );
-
-      const messageSentEventAccountKeypair = Keypair.generate();
-
-      const userTokenAccount = await getAssociatedTokenAddress(
-        usdcMint,
-        walletPublicKey
-      );
-
-      let mintRecipient: PublicKey;
-
-      if (isSolanaChain(destinationChainId)) {
-        mintRecipient = new PublicKey(destinationAddress);
-      } else {
-        const cleanAddress = destinationAddress
-          .replace(/^0x/, "")
-          .toLowerCase();
-        if (cleanAddress.length !== 40) {
-          throw new Error(
-            `Invalid EVM address length: ${cleanAddress.length}, expected 40`
-          );
-        }
-        const formattedAddress = `0x${cleanAddress}`;
-        const bytes32Address = evmAddressToBytes32(formattedAddress);
-        mintRecipient = new PublicKey(hexToBytes(bytes32Address as Hex));
-      }
-
-      const evmAddress = `0x${destinationAddress.replace(/^0x/, "")}`;
-      const destinationCaller = new PublicKey(
-        hexToBytes(evmAddressToBytes32(evmAddress) as Hex)
-      );
-      const maxFee =
-        transferType === "fast"
-          ? await getBufferedFastTransferFee(
-              SupportedChainId.SOLANA_DEVNET,
-              destinationChainId as SupportedChainId,
-              amount
-            )
-          : 0n;
-
-      // Anchor's generated IDL types don't fully align with .methods at runtime (known issue in @coral-xyz/anchor 0.30+)
-      const depositForBurnTx = await (
-        tokenMessengerMinterProgram as any
-      ).methods
-        .depositForBurn({
-          amount: new BN(amount.toString()),
-          destinationDomain: CHAIN_CONFIGS[destinationChainId as SupportedChainId].destinationDomain,
-          mintRecipient,
-          maxFee: new BN(maxFee.toString()),
-          minFinalityThreshold: transferType === "fast" ? FAST_FINALITY_THRESHOLD : STANDARD_FINALITY_THRESHOLD,
-          destinationCaller,
-        })
-        .accounts({
-          owner: walletPublicKey,
-          eventRentPayer: walletPublicKey,
-          senderAuthorityPda: pdas.authorityPda.publicKey,
-          burnTokenAccount: userTokenAccount,
-          denylistAccount: pdas.denylistAccount.publicKey,
-          messageTransmitter: pdas.messageTransmitterAccount.publicKey,
-          tokenMessenger: pdas.tokenMessengerAccount.publicKey,
-          remoteTokenMessenger: pdas.remoteTokenMessengerKey.publicKey,
-          tokenMinter: pdas.tokenMinterAccount.publicKey,
-          localToken: pdas.localToken.publicKey,
-          burnTokenMint: usdcMint,
-          messageSentEventData: messageSentEventAccountKeypair.publicKey,
-          messageTransmitterProgram: messageTransmitterProgram.programId,
-          tokenMessengerMinterProgram: tokenMessengerMinterProgram.programId,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          systemProgram: SystemProgram.programId,
-          eventAuthority: pdas.eventAuthority.publicKey,
-          program: tokenMessengerMinterProgram.programId,
-        })
-        .signers([messageSentEventAccountKeypair])
-        .rpc();
-
-      addLog(`Solana burn transaction: ${depositForBurnTx}`);
-      return depositForBurnTx;
-    } catch (err) {
-      setError("Solana burn failed");
-      throw err;
+    const {
+      getAnchorConnection,
+      getPrograms,
+      getDepositForBurnPdas,
+      evmAddressToBytes32,
+    } = await import("@/lib/solana-utils");
+    const { getAssociatedTokenAddress } = await import("@solana/spl-token");
+    const walletPublicKey = wallet.provider.publicKey;
+    if (!walletPublicKey) {
+      throw new Error("Connect a Solana wallet to continue.");
     }
+
+    const provider = getAnchorConnection(
+      {
+        publicKey: walletPublicKey,
+        signTransaction: wallet.provider.signTransaction.bind(wallet.provider),
+        signAllTransactions: wallet.provider.signAllTransactions?.bind(
+          wallet.provider,
+        ),
+      },
+      SOLANA_RPC_ENDPOINT,
+    );
+    const { messageTransmitterProgram, tokenMessengerMinterProgram } =
+      getPrograms(provider);
+
+    const usdcMint = new PublicKey(
+      CHAIN_CONFIGS[SupportedChainId.SOLANA_DEVNET].usdcAddress as string,
+    );
+
+    const pdas = getDepositForBurnPdas(
+      { messageTransmitterProgram, tokenMessengerMinterProgram },
+      usdcMint,
+      CHAIN_CONFIGS[destinationChainId as SupportedChainId].destinationDomain,
+      walletPublicKey,
+    );
+
+    const messageSentEventAccountKeypair = Keypair.generate();
+
+    const userTokenAccount = await getAssociatedTokenAddress(
+      usdcMint,
+      walletPublicKey,
+    );
+
+    let mintRecipient: PublicKey;
+
+    if (isSolanaChain(destinationChainId)) {
+      mintRecipient = new PublicKey(destinationAddress);
+    } else {
+      const cleanAddress = destinationAddress.replace(/^0x/, "").toLowerCase();
+      if (cleanAddress.length !== 40) {
+        throw new Error(
+          `Invalid EVM address length: ${cleanAddress.length}, expected 40`,
+        );
+      }
+      const formattedAddress = `0x${cleanAddress}`;
+      const bytes32Address = evmAddressToBytes32(formattedAddress);
+      mintRecipient = new PublicKey(hexToBytes(bytes32Address as Hex));
+    }
+
+    const evmAddress = `0x${destinationAddress.replace(/^0x/, "")}`;
+    const destinationCaller = new PublicKey(
+      hexToBytes(evmAddressToBytes32(evmAddress) as Hex),
+    );
+    const maxFee =
+      transferType === "fast"
+        ? await getBufferedFastTransferFee(
+            SupportedChainId.SOLANA_DEVNET,
+            destinationChainId as SupportedChainId,
+            amount,
+          )
+        : 0n;
+
+    // Anchor's generated IDL types don't fully align with .methods at runtime (known issue in @coral-xyz/anchor 0.30+)
+    const depositForBurnTx = await (tokenMessengerMinterProgram as any).methods
+      .depositForBurn({
+        amount: new BN(amount.toString()),
+        destinationDomain:
+          CHAIN_CONFIGS[destinationChainId as SupportedChainId]
+            .destinationDomain,
+        mintRecipient,
+        maxFee: new BN(maxFee.toString()),
+        minFinalityThreshold:
+          transferType === "fast"
+            ? FAST_FINALITY_THRESHOLD
+            : STANDARD_FINALITY_THRESHOLD,
+        destinationCaller,
+      })
+      .accounts({
+        owner: walletPublicKey,
+        eventRentPayer: walletPublicKey,
+        senderAuthorityPda: pdas.authorityPda.publicKey,
+        burnTokenAccount: userTokenAccount,
+        denylistAccount: pdas.denylistAccount.publicKey,
+        messageTransmitter: pdas.messageTransmitterAccount.publicKey,
+        tokenMessenger: pdas.tokenMessengerAccount.publicKey,
+        remoteTokenMessenger: pdas.remoteTokenMessengerKey.publicKey,
+        tokenMinter: pdas.tokenMinterAccount.publicKey,
+        localToken: pdas.localToken.publicKey,
+        burnTokenMint: usdcMint,
+        messageSentEventData: messageSentEventAccountKeypair.publicKey,
+        messageTransmitterProgram: messageTransmitterProgram.programId,
+        tokenMessengerMinterProgram: tokenMessengerMinterProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+        eventAuthority: pdas.eventAuthority.publicKey,
+        program: tokenMessengerMinterProgram.programId,
+      })
+      .signers([messageSentEventAccountKeypair])
+      .rpc();
+
+    addLog(`Solana burn transaction: ${depositForBurnTx}`);
+    return depositForBurnTx;
   };
 
   // ---------------------------------------------------------------------------
@@ -460,7 +458,7 @@ export function useCrossChainTransfer() {
 
   const retrieveAttestation = async (
     transactionHash: string,
-    sourceChainId: number
+    sourceChainId: number,
   ): Promise<AttestationResponse> => {
     setCurrentStep("waiting-attestation");
     addLog("Retrieving attestation...");
@@ -468,26 +466,27 @@ export function useCrossChainTransfer() {
     const url = `${IRIS_API_URL}/v2/messages/${CHAIN_CONFIGS[sourceChainId as SupportedChainId].destinationDomain}?transactionHash=${transactionHash}`;
 
     while (true) {
-      try {
-        const response = await fetch(url);
-        if (response.status === 404) {
-          await new Promise((resolve) => setTimeout(resolve, ATTESTATION_POLL_INTERVAL_MS));
-          continue;
-        }
-        if (!response.ok) {
-          throw new Error(`Attestation request failed with status ${response.status}`);
-        }
-        const data = await response.json();
-        if (data?.messages?.[0]?.status === "complete") {
-          addLog("Attestation retrieved");
-          return data.messages[0] as AttestationResponse;
-        }
-        addLog("Waiting for attestation...");
-        await new Promise((resolve) => setTimeout(resolve, ATTESTATION_POLL_INTERVAL_MS));
-      } catch (error) {
-        setError("Attestation retrieval failed");
-        throw error;
+      const response = await fetch(url);
+      if (response.status === 404) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, ATTESTATION_POLL_INTERVAL_MS),
+        );
+        continue;
       }
+      if (!response.ok) {
+        throw new Error(
+          `Attestation request failed with status ${response.status}`,
+        );
+      }
+      const data = await response.json();
+      if (data?.messages?.[0]?.status === "complete") {
+        addLog("Attestation retrieved");
+        return data.messages[0] as AttestationResponse;
+      }
+      addLog("Waiting for attestation...");
+      await new Promise((resolve) =>
+        setTimeout(resolve, ATTESTATION_POLL_INTERVAL_MS),
+      );
     }
   };
 
@@ -499,7 +498,7 @@ export function useCrossChainTransfer() {
     client: EvmClient,
     destinationChainId: number,
     attestation: AttestationResponse,
-    wallets: WalletConnections
+    wallets: WalletConnections,
   ) => {
     let retries = 0;
     setCurrentStep("minting");
@@ -512,7 +511,8 @@ export function useCrossChainTransfer() {
           throw new Error("Connect an EVM wallet to continue.");
         }
         const publicClient = createPublicClient({
-          chain: CHAIN_CONFIGS[destinationChainId as SupportedChainId].viemChain,
+          chain:
+            CHAIN_CONFIGS[destinationChainId as SupportedChainId].viemChain,
           transport: http(),
         });
         const contractConfig = {
@@ -555,21 +555,27 @@ export function useCrossChainTransfer() {
         });
 
         addLog(`Mint Tx: ${tx}`);
-        const receipt = await publicClient.waitForTransactionReceipt({ hash: tx });
+        const receipt = await publicClient.waitForTransactionReceipt({
+          hash: tx,
+        });
         if (receipt.status !== "success") {
-          throw new Error("Mint reverted");
+          throw new Error(`Mint transaction reverted: ${tx}`);
         }
         addLog(`Bridge completed successfully`);
         setCurrentStep("completed");
         break;
       } catch (err) {
-        if (err instanceof TransactionExecutionError && retries < MINT_MAX_RETRIES) {
+        if (
+          err instanceof TransactionExecutionError &&
+          retries < MINT_MAX_RETRIES
+        ) {
           retries++;
           addLog(`Retry ${retries}/${MINT_MAX_RETRIES}...`);
-          await new Promise((resolve) => setTimeout(resolve, MINT_RETRY_BASE_DELAY_MS * retries));
+          await new Promise((resolve) =>
+            setTimeout(resolve, MINT_RETRY_BASE_DELAY_MS * retries),
+          );
           continue;
         }
-        setError("Solana burn failed");
         throw err;
       }
     }
@@ -577,7 +583,7 @@ export function useCrossChainTransfer() {
 
   const mintSolanaUsdc = async (
     wallet: SolanaWalletConnection,
-    attestation: AttestationResponse
+    attestation: AttestationResponse,
   ) => {
     setCurrentStep("minting");
     addLog("Minting Solana USDC...");
@@ -599,18 +605,20 @@ export function useCrossChainTransfer() {
       const provider = getAnchorConnection(
         {
           publicKey: walletPublicKey,
-          signTransaction: wallet.provider.signTransaction.bind(wallet.provider),
+          signTransaction: wallet.provider.signTransaction.bind(
+            wallet.provider,
+          ),
           signAllTransactions: wallet.provider.signAllTransactions?.bind(
-            wallet.provider
+            wallet.provider,
           ),
         },
-        SOLANA_RPC_ENDPOINT
+        SOLANA_RPC_ENDPOINT,
       );
       const { messageTransmitterProgram, tokenMessengerMinterProgram } =
         getPrograms(provider);
 
       const usdcMint = new PublicKey(
-        CHAIN_CONFIGS[SupportedChainId.SOLANA_DEVNET].usdcAddress as string
+        CHAIN_CONFIGS[SupportedChainId.SOLANA_DEVNET].usdcAddress as string,
       );
       const messageHex = attestation.message;
       const attestationHex = attestation.attestation;
@@ -623,7 +631,9 @@ export function useCrossChainTransfer() {
       for (const [chainId, config] of Object.entries(CHAIN_CONFIGS)) {
         const id = parseInt(chainId);
         if (config.destinationDomain === sourceDomain && !isSolanaChain(id)) {
-          remoteTokenAddressHex = evmAddressToBytes32(config.usdcAddress as string);
+          remoteTokenAddressHex = evmAddressToBytes32(
+            config.usdcAddress as string,
+          );
           break;
         }
       }
@@ -633,12 +643,12 @@ export function useCrossChainTransfer() {
         usdcMint,
         remoteTokenAddressHex,
         sourceDomain.toString(),
-        nonce
+        nonce,
       );
 
       const userTokenAccount = await getAssociatedTokenAddress(
         usdcMint,
-        walletPublicKey
+        walletPublicKey,
       );
 
       const accountMetas = [
@@ -715,7 +725,6 @@ export function useCrossChainTransfer() {
       return receiveMessageTx;
     } catch (err) {
       console.error("Full Solana mint error:", err);
-      setError("Solana mint failed");
       throw err;
     }
   };
@@ -726,7 +735,7 @@ export function useCrossChainTransfer() {
 
   const getBalance = async (
     chainId: SupportedChainId,
-    wallets: WalletConnections
+    wallets: WalletConnections,
   ) => {
     if (isSolanaChain(chainId)) {
       return getSolanaBalance(chainId, wallets);
@@ -736,7 +745,7 @@ export function useCrossChainTransfer() {
 
   const getSolanaBalance = async (
     chainId: SupportedChainId,
-    wallets: WalletConnections
+    wallets: WalletConnections,
   ) => {
     const solanaWallet = wallets.solana;
     if (!solanaWallet?.provider.publicKey) {
@@ -745,13 +754,13 @@ export function useCrossChainTransfer() {
 
     const connection = getSolanaConnection();
     const usdcMint = new PublicKey(
-      CHAIN_CONFIGS[chainId].usdcAddress as string
+      CHAIN_CONFIGS[chainId].usdcAddress as string,
     );
 
     try {
       const associatedTokenAddress = await getAssociatedTokenAddress(
         usdcMint,
-        solanaWallet.provider.publicKey
+        solanaWallet.provider.publicKey,
       );
 
       const tokenAccount = await getAccount(connection, associatedTokenAddress);
@@ -771,7 +780,7 @@ export function useCrossChainTransfer() {
 
   const getEvmBalance = async (
     chainId: SupportedChainId,
-    wallets: WalletConnections
+    wallets: WalletConnections,
   ) => {
     const evmWallet = wallets.evm;
     if (!evmWallet) {
@@ -806,7 +815,7 @@ export function useCrossChainTransfer() {
 
   const getClients = (
     chainId: SupportedChainId,
-    wallets: WalletConnections
+    wallets: WalletConnections,
   ) => {
     if (isSolanaChain(chainId)) {
       const wallet = wallets.solana;
@@ -829,10 +838,11 @@ export function useCrossChainTransfer() {
   const getBufferedFastTransferFee = async (
     sourceChainId: SupportedChainId,
     destinationChainId: SupportedChainId,
-    amount: bigint
+    amount: bigint,
   ) => {
     const sourceDomain = CHAIN_CONFIGS[sourceChainId].destinationDomain;
-    const destinationDomain = CHAIN_CONFIGS[destinationChainId].destinationDomain;
+    const destinationDomain =
+      CHAIN_CONFIGS[destinationChainId].destinationDomain;
     const feeUrl = `${IRIS_API_URL}/v2/burn/USDC/fees/${sourceDomain}/${destinationDomain}`;
 
     const response = await fetch(feeUrl);
@@ -852,7 +862,7 @@ export function useCrossChainTransfer() {
     const bufferedFee = (protocolFee * FAST_FEE_BUFFER_PERCENT) / 100n;
 
     addLog(
-      `Fast transfer fee cap: ${formatUnits(bufferedFee, DEFAULT_DECIMALS)} USDC`
+      `Fast transfer fee cap: ${formatUnits(bufferedFee, DEFAULT_DECIMALS)} USDC`,
     );
 
     return bufferedFee;
@@ -899,7 +909,7 @@ export function useCrossChainTransfer() {
 
   const getDestinationAddress = (
     chainId: number,
-    wallets: WalletConnections
+    wallets: WalletConnections,
   ) => {
     if (isSolanaChain(chainId)) {
       return getRequiredSolanaWallet(wallets).address;
@@ -909,14 +919,11 @@ export function useCrossChainTransfer() {
 
   const switchEvmWalletToChain = async (
     chainId: number,
-    wallets: WalletConnections
+    wallets: WalletConnections,
   ) => {
     const evmWallet = getRequiredEvmWallet(wallets);
     try {
-      await ensureEvmChain(
-        evmWallet.provider,
-        chainId as SupportedChainId
-      );
+      await ensureEvmChain(evmWallet.provider, chainId as SupportedChainId);
     } catch (error: unknown) {
       const e = error as { code?: number; message?: string };
       if (e.code === 4001 && e.message) {
