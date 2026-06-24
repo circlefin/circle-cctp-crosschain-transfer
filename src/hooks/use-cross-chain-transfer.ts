@@ -165,9 +165,7 @@ export function useCrossChainTransfer() {
       }
     } catch (error) {
       setCurrentStep("error");
-      addLog(
-        `Error: ${error instanceof Error ? error.message : "Unknown error"}`
-      );
+      setError(getErrorMessage(error));
     }
   };
 
@@ -215,6 +213,10 @@ export function useCrossChainTransfer() {
       });
 
       addLog(`USDC Approval Tx: ${tx}`);
+      await createPublicClient({
+        chain: CHAIN_CONFIGS[sourceChainId as SupportedChainId].viemChain,
+        transport: http(),
+      }).waitForTransactionReceipt({ hash: tx });
       return tx;
     } catch (err) {
       setError("Approval failed");
@@ -312,6 +314,10 @@ export function useCrossChainTransfer() {
       });
 
       addLog(`Burn Tx: ${tx}`);
+      await createPublicClient({
+        chain: CHAIN_CONFIGS[sourceChainId as SupportedChainId].viemChain,
+        transport: http(),
+      }).waitForTransactionReceipt({ hash: tx });
       return tx;
     } catch (err) {
       setError("Burn failed");
@@ -444,11 +450,6 @@ export function useCrossChainTransfer() {
       return depositForBurnTx;
     } catch (err) {
       setError("Solana burn failed");
-      addLog(
-        `Solana burn error: ${
-          err instanceof Error ? err.message : "Unknown error"
-        }`
-      );
       throw err;
     }
   };
@@ -478,18 +479,13 @@ export function useCrossChainTransfer() {
         }
         const data = await response.json();
         if (data?.messages?.[0]?.status === "complete") {
-          addLog("Attestation retrieved!");
+          addLog("Attestation retrieved");
           return data.messages[0] as AttestationResponse;
         }
         addLog("Waiting for attestation...");
         await new Promise((resolve) => setTimeout(resolve, ATTESTATION_POLL_INTERVAL_MS));
       } catch (error) {
         setError("Attestation retrieval failed");
-        addLog(
-          `Attestation error: ${
-            error instanceof Error ? error.message : "Unknown error"
-          }`
-        );
         throw error;
       }
     }
@@ -558,15 +554,12 @@ export function useCrossChainTransfer() {
           gas: gasWithBuffer,
         });
 
-        addLog(`Mint Tx submitted: ${tx}`);
-        const receipt = await publicClient.waitForTransactionReceipt({
-          hash: tx,
-        });
+        addLog(`Mint Tx: ${tx}`);
+        const receipt = await publicClient.waitForTransactionReceipt({ hash: tx });
         if (receipt.status !== "success") {
-          throw new Error(`Mint transaction reverted: ${tx}`);
+          throw new Error("Mint reverted");
         }
-
-        addLog(`Mint Tx confirmed: ${tx}`);
+        addLog(`Bridge completed successfully`);
         setCurrentStep("completed");
         break;
       } catch (err) {
@@ -576,7 +569,7 @@ export function useCrossChainTransfer() {
           await new Promise((resolve) => setTimeout(resolve, MINT_RETRY_BASE_DELAY_MS * retries));
           continue;
         }
-        setError("Mint failed");
+        setError("Solana burn failed");
         throw err;
       }
     }
@@ -723,15 +716,6 @@ export function useCrossChainTransfer() {
     } catch (err) {
       console.error("Full Solana mint error:", err);
       setError("Solana mint failed");
-      addLog(
-        `Solana mint error: ${
-          err instanceof Error
-            ? err.message
-            : typeof err === "string"
-            ? err
-            : JSON.stringify(err)
-        }`
-      );
       throw err;
     }
   };
@@ -820,8 +804,6 @@ export function useCrossChainTransfer() {
     return formattedBalance;
   };
 
-
-
   const getClients = (
     chainId: SupportedChainId,
     wallets: WalletConnections
@@ -893,6 +875,14 @@ export function useCrossChainTransfer() {
       `[${new Date().toLocaleTimeString()}] ${message}`,
     ]);
 
+  const getErrorMessage = (error: unknown): string => {
+    if (error instanceof Error) return error.message;
+    const e = error as { message?: string };
+    if (e.message) return e.message;
+    if (typeof error === "string") return error;
+    return "Unknown error";
+  };
+
   const getRequiredEvmWallet = (wallets: WalletConnections) => {
     if (!wallets.evm) {
       throw new Error("Connect an EVM wallet to continue.");
@@ -927,12 +917,12 @@ export function useCrossChainTransfer() {
         evmWallet.provider,
         chainId as SupportedChainId
       );
-    } catch (error) {
-      const walletName = evmWallet.providerInfo?.name ?? "Selected EVM wallet";
-      const chainName = CHAIN_CONFIGS[chainId as SupportedChainId].name;
-      throw new Error(
-        `${walletName} could not switch to ${chainName}. The wallet may not support this chain.`
-      );
+    } catch (error: unknown) {
+      const e = error as { code?: number; message?: string };
+      if (e.code === 4001 && e.message) {
+        throw new Error(e.message);
+      }
+      throw error;
     }
   };
 

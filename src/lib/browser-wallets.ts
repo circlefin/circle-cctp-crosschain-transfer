@@ -135,10 +135,32 @@ export async function ensureEvmChain(
   provider: EvmProvider,
   chainId: SupportedChainId
 ) {
+  const chain = CHAIN_CONFIGS[chainId].viemChain;
+  if (!chain) {
+    throw new Error(`Unsupported EVM chain: ${chainId}`);
+  }
+
+  const hexChainId = `0x${chainId.toString(16)}`;
+
   await provider.request({
-    method: "wallet_switchEthereumChain",
-    params: [{ chainId: `0x${chainId.toString(16)}` }],
+    method: "wallet_addEthereumChain",
+    params: [
+      {
+        chainId: hexChainId,
+        chainName: chain.name,
+        nativeCurrency: chain.nativeCurrency,
+        rpcUrls: chain.rpcUrls.default.http,
+        blockExplorerUrls: chain.blockExplorers
+          ? Object.values(chain.blockExplorers).map(({ url }) => url)
+          : undefined,
+      },
+    ],
   });
+
+  const activeChainId = (await provider.request({ method: "eth_chainId" })) as string;
+  if (parseInt(activeChainId, 16) !== chainId) {
+    throw new Error(`Wallet is not on ${chain.name}. Please switch to it and retry.`);
+  }
 }
 
 export function getEvmWalletClient(
