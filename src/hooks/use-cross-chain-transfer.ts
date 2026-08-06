@@ -82,6 +82,8 @@ const MINT_MAX_RETRIES = 3;
 const MINT_RETRY_BASE_DELAY_MS = 2000;
 const GAS_BUFFER_PERCENT = 120n;
 const FAST_FEE_BUFFER_PERCENT = 120n;
+// Passed as `destinationCaller`: bytes32(0) means any address may call
+// receiveMessage on the destination chain.
 const BYTES32_ZERO =
   "0x0000000000000000000000000000000000000000000000000000000000000000" as Hex;
 
@@ -297,9 +299,9 @@ export function useCrossChainTransfer() {
               { name: "destinationDomain", type: "uint32" },
               { name: "mintRecipient", type: "bytes32" },
               { name: "burnToken", type: "address" },
-              { name: "hookData", type: "bytes32" },
+              { name: "destinationCaller", type: "bytes32" },
               { name: "maxFee", type: "uint256" },
-              { name: "finalityThreshold", type: "uint32" },
+              { name: "minFinalityThreshold", type: "uint32" },
             ],
             outputs: [],
           },
