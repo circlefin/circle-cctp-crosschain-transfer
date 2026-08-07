@@ -38,6 +38,7 @@ import {
   unichainSepolia,
   worldchainSepolia,
   xdcTestnet,
+  xLayerTestnet,
 } from "viem/chains";
 
 export enum SupportedChainId {
@@ -65,6 +66,7 @@ export enum SupportedChainId {
   UNICHAIN_SEPOLIA = 1301,
   WORLDCHAIN_SEPOLIA = 4801,
   XDC_TESTNET = 51,
+  XLAYER_TESTNET = 1952,
 }
 
 export interface ChainConfig {
@@ -75,6 +77,16 @@ export interface ChainConfig {
   messageTransmitter: Hex | string;
   destinationDomain: number;
 }
+
+// Same-origin proxy (see next.config.ts). Wallets still need an absolute RPC URL.
+const arcTestnetProxied = defineChain({
+  ...arcTestnet,
+  rpcUrls: {
+    default: {
+      http: ["/api/rpc/arc"],
+    },
+  },
+});
 
 const edgeTestnet = defineChain({
   id: 33431,
@@ -123,7 +135,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
   },
   [SupportedChainId.ARC_TESTNET]: {
     name: "Arc Testnet",
-    viemChain: arcTestnet,
+    viemChain: arcTestnetProxied,
     usdcAddress: "0x3600000000000000000000000000000000000000",
     tokenMessenger: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
     messageTransmitter: "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
@@ -303,6 +315,14 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
     messageTransmitter: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
     destinationDomain: 18,
+  },
+  [SupportedChainId.XLAYER_TESTNET]: {
+    name: "XLayer Testnet",
+    viemChain: xLayerTestnet,
+    usdcAddress: "0xdec90b78111ba2fc6fc6d84d8b9ec159a2d4b9b3",
+    tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
+    messageTransmitter: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
+    destinationDomain: 37,
   },
 };
 

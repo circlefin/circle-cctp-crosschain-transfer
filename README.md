@@ -1,6 +1,6 @@
 # Circle CCTP Crosschain Transfer Sample App
 
-This sample app demonstrates how to use Circle's [Cross-Chain Transfer Protocol (CCTP)](https://developers.circle.com/stablecoins/cctp-getting-started) to transfer USDC across chains. It walks through the full CCTP flow — approve, burn, attest, and mint — on both EVM and Solana testnets using a Next.js interface.
+This sample app demonstrates how to use Circle's [Cross-Chain Transfer Protocol (CCTP)](https://developers.circle.com/stablecoins/cctp-getting-started) to transfer USDC across chains. It walks through the CCTP flow — approve on EVM source chains, burn, attest through Circle's IRIS sandbox API, and mint — on both EVM and Solana testnets using a Next.js interface.
 
 > **Note:** This demo now uses injected user wallets for signing. Use testnet wallets only and do not treat this sample as production-ready custody or wallet infrastructure.
 
@@ -36,7 +36,7 @@ The app will be running at `http://localhost:3000`.
 ## How It Works
 
 - The app is built with [Next.js](https://nextjs.org/) (App Router) and uses [viem](https://viem.sh/) for EVM interactions and [@coral-xyz/anchor](https://www.anchor-lang.com/) + [@solana/web3.js](https://solana-labs.github.io/solana-web3.js/) for Solana interactions.
-- The core transfer logic lives in a single React hook (`use-cross-chain-transfer.ts`) that orchestrates the four CCTP steps: approve spending, burn USDC on the source chain, retrieve attestation from Circle's IRIS API, and mint USDC on the destination chain.
+- The core transfer logic lives in a single React hook (`use-cross-chain-transfer.ts`) that orchestrates the four CCTP steps: approve spending on EVM source chains, burn USDC on the source chain, retrieve an attestation from Circle's IRIS sandbox API, and mint USDC on the destination chain. Solana transfers do not require a separate approval transaction.
 - Chain configuration (contract addresses, destination domains, viem chain definitions) is centralized in a single `CHAIN_CONFIGS` record in `chains.ts`.
 - The app uses the connected EVM and/or Solana wallet based on the selected source and destination chains.
 
@@ -47,9 +47,10 @@ The app will be running at `http://localhost:3000`.
 - Avalanche Fuji
 - Base Sepolia
 - Codex Testnet
+- Cronos Testnet
 - Edge Testnet
 - Ethereum Sepolia
-- HyperEVM Testnet
+- HyperEvm Testnet
 - Injective Testnet
 - Ink Sepolia
 - Linea Sepolia
@@ -65,6 +66,7 @@ The app will be running at `http://localhost:3000`.
 - Unichain Sepolia
 - Worldchain Sepolia
 - XDC Testnet
+- XLayer Testnet
 
 ## File Highlights
 
@@ -95,7 +97,7 @@ This sample application:
 - Relies on injected browser wallets for signing
 - Is not intended for production use without modification
 
-See `SECURITY.md` for vulnerability reporting guidelines. Please report issues privately via Circle's bug bounty program.
+See `SECURITY.md` for vulnerability reporting guidelines. Please report vulnerabilities privately through Circle's [Vulnerability Disclosure Program](https://hackerone.com/circle).
 
 ## License
 
