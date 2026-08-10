@@ -82,6 +82,7 @@ const MINT_MAX_RETRIES = 3;
 const MINT_RETRY_BASE_DELAY_MS = 2000;
 const GAS_BUFFER_PERCENT = 120n;
 const FAST_FEE_BUFFER_PERCENT = 120n;
+// A zero destination caller allows any address to call receiveMessage.
 const BYTES32_ZERO =
   "0x0000000000000000000000000000000000000000000000000000000000000000" as Hex;
 
@@ -251,7 +252,7 @@ export function useCrossChainTransfer() {
     if (!client.account) {
       throw new Error("Connect an EVM wallet to continue.");
     }
-    const finalityThreshold =
+    const minFinalityThreshold =
       transferType === "fast"
         ? FAST_FINALITY_THRESHOLD
         : STANDARD_FINALITY_THRESHOLD;
@@ -297,9 +298,9 @@ export function useCrossChainTransfer() {
               { name: "destinationDomain", type: "uint32" },
               { name: "mintRecipient", type: "bytes32" },
               { name: "burnToken", type: "address" },
-              { name: "hookData", type: "bytes32" },
+              { name: "destinationCaller", type: "bytes32" },
               { name: "maxFee", type: "uint256" },
-              { name: "finalityThreshold", type: "uint32" },
+              { name: "minFinalityThreshold", type: "uint32" },
             ],
             outputs: [],
           },
@@ -314,7 +315,7 @@ export function useCrossChainTransfer() {
             .usdcAddress as `0x${string}`,
           BYTES32_ZERO,
           maxFee,
-          finalityThreshold,
+          minFinalityThreshold,
         ],
       }),
     });
