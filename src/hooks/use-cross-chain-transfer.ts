@@ -568,7 +568,7 @@ export function useCrossChainTransfer() {
       } catch (err) {
         if (
           err instanceof TransactionExecutionError &&
-          retries < MINT_MAX_RETRIES
+          retries < MINT_MAX_RETRIES - 1
         ) {
           retries++;
           addLog(`Retry ${retries}/${MINT_MAX_RETRIES}...`);
