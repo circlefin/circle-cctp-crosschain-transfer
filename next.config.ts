@@ -19,7 +19,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  async rewrites() {
+    return [
+      {
+        source: "/api/rpc/arc",
+        destination: "https://rpc.testnet.arc.network",
+      },
+    ];
+  },
 };
 
 export default nextConfig;
