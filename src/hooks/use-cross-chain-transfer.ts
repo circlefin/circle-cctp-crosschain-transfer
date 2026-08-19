@@ -398,10 +398,8 @@ export function useCrossChainTransfer() {
       mintRecipient = new PublicKey(hexToBytes(bytes32Address as Hex));
     }
 
-    const evmAddress = `0x${destinationAddress.replace(/^0x/, "")}`;
-    const destinationCaller = new PublicKey(
-      hexToBytes(evmAddressToBytes32(evmAddress) as Hex),
-    );
+    // In CCTP V2, destinationCaller of PublicKey.default (32 zero bytes) allows any relayer or user to call receiveMessage on the destination chain.
+    const destinationCaller = PublicKey.default;
     const maxFee =
       transferType === "fast"
         ? await getBufferedFastTransferFee(
@@ -639,6 +637,12 @@ export function useCrossChainTransfer() {
         }
       }
 
+      if (!remoteTokenAddressHex) {
+        throw new Error(
+          `Unsupported or unknown source domain: ${sourceDomain}. Unable to locate remote USDC address.`,
+        );
+      }
+
       const pdas = await getReceiveMessagePdas(
         { messageTransmitterProgram, tokenMessengerMinterProgram },
         usdcMint,
@@ -869,11 +873,17 @@ export function useCrossChainTransfer() {
     return bufferedFee;
   };
 
-  const parseFeeBps = (minimumFee: number | string) => {
+  const parseFeeBps = (minimumFee: number | string): bigint => {
     const minimumFeeString = String(minimumFee);
+    if (minimumFeeString.includes("e") || minimumFeeString.includes("E")) {
+      const num = Number(minimumFee);
+      return BigInt(Math.max(0, Math.round(num * 100)));
+    }
     const [whole = "0", fraction = ""] = minimumFeeString.split(".");
+    const wholeBigInt = BigInt(whole || "0");
     const paddedFraction = `${fraction}00`.slice(0, 2);
-    return BigInt(`${whole}${paddedFraction}`);
+    const fractionBigInt = BigInt(paddedFraction || "0");
+    return wholeBigInt * 100n + fractionBigInt;
   };
 
   const isSolanaChain = (chainId: number): boolean => {
