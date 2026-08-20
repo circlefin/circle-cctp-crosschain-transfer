@@ -18,7 +18,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   http,
   encodeFunctionData,
@@ -78,6 +78,11 @@ const DEFAULT_DECIMALS = 6;
 const FAST_FINALITY_THRESHOLD = 1000;
 const STANDARD_FINALITY_THRESHOLD = 2000;
 const ATTESTATION_POLL_INTERVAL_MS = 5000;
+// Standard-finality transfers can take well over an hour, so this ceiling only
+// exists to stop a message that will never attest from polling forever.
+const ATTESTATION_TIMEOUT_MS = 3 * 60 * 60 * 1000;
+// One "still waiting" line per minute instead of one per poll.
+const ATTESTATION_LOG_EVERY = 12;
 const MINT_MAX_RETRIES = 3;
 const MINT_RETRY_BASE_DELAY_MS = 2000;
 const GAS_BUFFER_PERCENT = 120n;
@@ -91,6 +96,30 @@ export function useCrossChainTransfer() {
   const [logs, setLogs] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  // Tracks the in-flight transfer so it can be abandoned. Without this, reset()
+  // only clears the UI: the previous run keeps polling for its attestation and
+  // later writes logs and step changes over whatever is on screen, including a
+  // "completed" for a transfer the user already walked away from.
+  const abortRef = useRef<AbortController | null>(null);
+
+  // Abandon an in-flight transfer on unmount so it cannot outlive the page.
+  useEffect(() => () => abortRef.current?.abort(), []);
+
+  /** Sleep that gives up early when the transfer is abandoned. */
+  const wait = (ms: number, signal: AbortSignal) =>
+    new Promise<void>((resolve, reject) => {
+      if (signal.aborted) return reject(signal.reason);
+      const timer = setTimeout(() => {
+        signal.removeEventListener("abort", onAbort);
+        resolve();
+      }, ms);
+      function onAbort() {
+        clearTimeout(timer);
+        reject(signal.reason);
+      }
+      signal.addEventListener("abort", onAbort, { once: true });
+    });
+
   // ---------------------------------------------------------------------------
   // CCTP Transfer Flow
   // The core transfer is a 4-step process: Approve → Burn → Attest → Mint
@@ -103,6 +132,13 @@ export function useCrossChainTransfer() {
     transferType: "fast" | "standard",
     wallets: WalletConnections,
   ) => {
+    // Abandon anything still running before starting a new attempt, so two
+    // transfers can never write to the same state.
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const { signal } = controller;
+
     try {
       const numericAmount = parseUnits(amount, DEFAULT_DECIMALS);
 
@@ -152,7 +188,11 @@ export function useCrossChainTransfer() {
       }
 
       // Step 3: Retrieve attestation
-      const attestation = await retrieveAttestation(burnTx, sourceChainId);
+      const attestation = await retrieveAttestation(
+        burnTx,
+        sourceChainId,
+        signal,
+      );
 
       // Step 4: Mint
       if (isDestinationSolana) {
@@ -166,11 +206,17 @@ export function useCrossChainTransfer() {
           destinationChainId,
           attestation,
           wallets,
+          signal,
         );
       }
     } catch (error) {
+      // An abandoned transfer is not a failure: the user reset or navigated
+      // away, and its state is no longer on screen to report into.
+      if (signal.aborted) return;
       setCurrentStep("error");
       setError(getErrorMessage(error));
+    } finally {
+      if (abortRef.current === controller) abortRef.current = null;
     }
   };
 
@@ -460,18 +506,23 @@ export function useCrossChainTransfer() {
   const retrieveAttestation = async (
     transactionHash: string,
     sourceChainId: number,
+    signal: AbortSignal,
   ): Promise<AttestationResponse> => {
     setCurrentStep("waiting-attestation");
     addLog("Retrieving attestation...");
 
     const url = `${IRIS_API_URL}/v2/messages/${CHAIN_CONFIGS[sourceChainId as SupportedChainId].destinationDomain}?transactionHash=${transactionHash}`;
 
-    while (true) {
-      const response = await fetch(url);
+    const deadline = Date.now() + ATTESTATION_TIMEOUT_MS;
+    let polls = 0;
+
+    while (Date.now() < deadline) {
+      signal.throwIfAborted();
+
+      const response = await fetch(url, { signal });
       if (response.status === 404) {
-        await new Promise((resolve) =>
-          setTimeout(resolve, ATTESTATION_POLL_INTERVAL_MS),
-        );
+        await wait(ATTESTATION_POLL_INTERVAL_MS, signal);
+        polls++;
         continue;
       }
       if (!response.ok) {
@@ -484,11 +535,19 @@ export function useCrossChainTransfer() {
         addLog("Attestation retrieved");
         return data.messages[0] as AttestationResponse;
       }
-      addLog("Waiting for attestation...");
-      await new Promise((resolve) =>
-        setTimeout(resolve, ATTESTATION_POLL_INTERVAL_MS),
-      );
+      // Logging every poll grew the transfer log without bound; a slow standard
+      // transfer produced hundreds of identical lines.
+      if (polls % ATTESTATION_LOG_EVERY === 0) {
+        addLog("Waiting for attestation...");
+      }
+      await wait(ATTESTATION_POLL_INTERVAL_MS, signal);
+      polls++;
     }
+
+    throw new Error(
+      `Attestation did not arrive within ${Math.round(ATTESTATION_TIMEOUT_MS / 60000)} minutes. ` +
+        `The burn succeeded (${transactionHash}); the mint can be completed later.`,
+    );
   };
 
   // ---------------------------------------------------------------------------
@@ -500,6 +559,7 @@ export function useCrossChainTransfer() {
     destinationChainId: number,
     attestation: AttestationResponse,
     wallets: WalletConnections,
+    signal: AbortSignal,
   ) => {
     let retries = 0;
     setCurrentStep("minting");
@@ -507,6 +567,7 @@ export function useCrossChainTransfer() {
 
     while (retries < MINT_MAX_RETRIES) {
       try {
+        signal.throwIfAborted();
         await switchEvmWalletToChain(destinationChainId, wallets);
         if (!client.account) {
           throw new Error("Connect an EVM wallet to continue.");
@@ -541,7 +602,9 @@ export function useCrossChainTransfer() {
         });
 
         const gasWithBuffer = (gasEstimate * GAS_BUFFER_PERCENT) / 100n;
-        addLog(`Gas Used: ${formatUnits(gasWithBuffer, 9)} Gwei`);
+        // gasWithBuffer is a gas limit, not a price: formatting it as Gwei
+        // reported a ~180,000 gas limit as "0.00018 Gwei".
+        addLog(`Gas limit: ${gasWithBuffer.toString()}`);
 
         const tx = await client.sendTransaction({
           account: client.account,
@@ -562,19 +625,19 @@ export function useCrossChainTransfer() {
         if (receipt.status !== "success") {
           throw new Error(`Mint transaction reverted: ${tx}`);
         }
+        addLog(`Gas used: ${receipt.gasUsed.toString()}`);
         addLog(`Bridge completed successfully`);
         setCurrentStep("completed");
         break;
       } catch (err) {
+        if (signal.aborted) throw err;
         if (
           err instanceof TransactionExecutionError &&
           retries < MINT_MAX_RETRIES - 1
         ) {
           retries++;
           addLog(`Retry ${retries}/${MINT_MAX_RETRIES}...`);
-          await new Promise((resolve) =>
-            setTimeout(resolve, MINT_RETRY_BASE_DELAY_MS * retries),
-          );
+          await wait(MINT_RETRY_BASE_DELAY_MS * retries, signal);
           continue;
         }
         throw err;
@@ -935,6 +998,10 @@ export function useCrossChainTransfer() {
   };
 
   const reset = () => {
+    // Stop the run first: clearing state while it is still executing only hides
+    // it until the next log line or step change repaints the screen.
+    abortRef.current?.abort();
+    abortRef.current = null;
     setCurrentStep("idle");
     setLogs([]);
     setError(null);
