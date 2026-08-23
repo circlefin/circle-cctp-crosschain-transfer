@@ -78,16 +78,6 @@ export interface ChainConfig {
   destinationDomain: number;
 }
 
-// Same-origin proxy (see next.config.ts). Wallets still need an absolute RPC URL.
-const arcTestnetProxied = defineChain({
-  ...arcTestnet,
-  rpcUrls: {
-    default: {
-      http: ["/api/rpc/arc"],
-    },
-  },
-});
-
 const edgeTestnet = defineChain({
   id: 33431,
   name: "Edge Testnet",
@@ -135,7 +125,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
   },
   [SupportedChainId.ARC_TESTNET]: {
     name: "Arc Testnet",
-    viemChain: arcTestnetProxied,
+    viemChain: arcTestnet,
     usdcAddress: "0x3600000000000000000000000000000000000000",
     tokenMessenger: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
     messageTransmitter: "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
