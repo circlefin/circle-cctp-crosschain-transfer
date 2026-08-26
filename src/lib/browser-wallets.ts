@@ -6,6 +6,11 @@ import {
   type WalletAccount,
 } from "@wallet-standard/core";
 import {
+  getAptosWallets,
+  UserResponseStatus,
+  type AptosWallet,
+} from "@aptos-labs/wallet-standard";
+import {
   PublicKey,
   Transaction,
   VersionedTransaction,
@@ -53,9 +58,11 @@ export interface SolanaWalletConnection {
   disconnect(): Promise<void>;
 }
 
-/** Placeholder until Aptos wallet connect is wired. */
 export interface AptosWalletConnection {
   address: string;
+  walletName: string;
+  wallet: AptosWallet;
+  disconnect(): Promise<void>;
 }
 
 /** Placeholder until Stellar wallet connect is wired. */
@@ -241,6 +248,51 @@ export async function connectSolanaWallet(
 
 export async function disconnectSolanaWallet(
   connection: SolanaWalletConnection | null,
+) {
+  await connection?.disconnect();
+}
+
+function isAptosWallet(wallet: AptosWallet): boolean {
+  return Boolean(
+    wallet.features["aptos:connect"] &&
+      wallet.features["aptos:signTransaction"],
+  );
+}
+
+export async function discoverAptosWallets(): Promise<AptosWallet[]> {
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  const { aptosWallets } = getAptosWallets();
+  return aptosWallets.filter(isAptosWallet);
+}
+
+export async function connectAptosWallet(
+  selectedWallet?: AptosWallet,
+): Promise<AptosWalletConnection> {
+  const wallet = selectedWallet ?? (await discoverAptosWallets()).at(0);
+  if (!wallet?.features["aptos:connect"]) {
+    throw new Error(
+      "No Aptos wallet detected (install Petra or another AIP-62 wallet)",
+    );
+  }
+
+  const response = await wallet.features["aptos:connect"].connect();
+  if (response.status !== UserResponseStatus.APPROVED) {
+    throw new Error("Aptos wallet connection rejected");
+  }
+
+  const address = response.args.address.toString();
+  return {
+    address,
+    walletName: wallet.name,
+    wallet,
+    disconnect: async () => {
+      await wallet.features["aptos:disconnect"]?.disconnect();
+    },
+  };
+}
+
+export async function disconnectAptosWallet(
+  connection: AptosWalletConnection | null,
 ) {
   await connection?.disconnect();
 }

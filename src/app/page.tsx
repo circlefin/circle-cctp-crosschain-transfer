@@ -42,14 +42,18 @@ import { TransferLog } from "@/components/transfer-log";
 import { Timer } from "@/components/timer";
 import { TransferTypeSelector } from "@/components/transfer-type";
 import {
+  connectAptosWallet,
   connectEvmWallet,
   connectSolanaWallet,
+  discoverAptosWallets,
   discoverEvmWallets,
   discoverSolanaWallets,
+  disconnectAptosWallet,
   disconnectSolanaWallet,
   type EvmProviderOption,
   type WalletConnections,
 } from "@/lib/browser-wallets";
+import type { AptosWallet } from "@aptos-labs/wallet-standard";
 import type { Wallet } from "@wallet-standard/core";
 
 export default function Home() {
@@ -79,6 +83,10 @@ export default function Home() {
   const [showEvmWalletPicker, setShowEvmWalletPicker] = useState(false);
   const [solanaWalletOptions, setSolanaWalletOptions] = useState<Wallet[]>([]);
   const [showSolanaWalletPicker, setShowSolanaWalletPicker] = useState(false);
+  const [aptosWalletOptions, setAptosWalletOptions] = useState<AptosWallet[]>(
+    [],
+  );
+  const [showAptosWalletPicker, setShowAptosWalletPicker] = useState(false);
 
   const sourceEcosystem = CHAIN_CONFIGS[sourceChain].ecosystem;
   const destinationEcosystem = CHAIN_CONFIGS[destinationChain].ecosystem;
@@ -86,8 +94,12 @@ export default function Home() {
     sourceEcosystem === "evm" || destinationEcosystem === "evm";
   const needsSolanaWallet =
     sourceEcosystem === "solana" || destinationEcosystem === "solana";
+  const needsAptosWallet =
+    sourceEcosystem === "aptos" || destinationEcosystem === "aptos";
   const missingRequiredWallet =
-    (needsEvmWallet && !wallets.evm) || (needsSolanaWallet && !wallets.solana);
+    (needsEvmWallet && !wallets.evm) ||
+    (needsSolanaWallet && !wallets.solana) ||
+    (needsAptosWallet && !wallets.aptos);
 
   const handleStartTransfer = async () => {
     setIsTransferring(true);
@@ -184,18 +196,63 @@ export default function Home() {
     }
   };
 
+  const handleAptosWalletClick = async () => {
+    if (wallets.aptos) {
+      try {
+        await disconnectAptosWallet(wallets.aptos);
+      } catch (error) {
+        console.error("Failed to disconnect Aptos wallet:", error);
+      }
+      setWallets((current) => ({ ...current, aptos: null }));
+      return;
+    }
+
+    try {
+      const options = await discoverAptosWallets();
+      if (options.length > 1) {
+        setAptosWalletOptions(options);
+        setShowAptosWalletPicker(true);
+        return;
+      }
+
+      const connection = await connectAptosWallet(options[0]);
+      setWallets((current) => ({ ...current, aptos: connection }));
+    } catch (error) {
+      console.error("Failed to connect Aptos wallet:", error);
+    }
+  };
+
+  const handleAptosWalletSelect = async (wallet: AptosWallet) => {
+    try {
+      const connection = await connectAptosWallet(wallet);
+      setWallets((current) => ({ ...current, aptos: connection }));
+      setShowAptosWalletPicker(false);
+    } catch (error) {
+      console.error("Failed to connect selected Aptos wallet:", error);
+    }
+  };
+
   useEffect(() => {
+    let cancelled = false;
     const wrapper = async () => {
       try {
-        const balance = await getBalance(sourceChain, wallets);
-        setBalance(balance);
+        const nextBalance = await getBalance(sourceChain, wallets);
+        if (!cancelled) {
+          setBalance(nextBalance);
+        }
       } catch (error) {
         console.error("Failed to get balance:", error);
-        setBalance("0");
+        if (!cancelled) {
+          setBalance("0");
+        }
       }
     };
     wrapper();
-  }, [sourceChain, wallets, getBalance]);
+    return () => {
+      cancelled = true;
+    };
+    // getBalance is recreated each render; only refetch when chain/wallets change.
+  }, [sourceChain, wallets]);
 
   const formatAddress = (address: string | null) => {
     if (!address) {
@@ -264,6 +321,34 @@ export default function Home() {
                         key={wallet.name}
                         variant="outline"
                         onClick={() => handleSolanaWalletSelect(wallet)}
+                      >
+                        {wallet.name}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="text-center">
+              <Button variant="outline" onClick={handleAptosWalletClick}>
+                {wallets.aptos
+                  ? "Disconnect Aptos Wallet"
+                  : "Connect Aptos Wallet"}
+              </Button>
+              <p className="text-sm text-muted-foreground mt-2">
+                {wallets.aptos
+                  ? `${formatAddress(wallets.aptos.address)} (${wallets.aptos.walletName})`
+                  : "Required for Aptos source or destination chains"}
+              </p>
+              {showAptosWalletPicker && (
+                <div className="mt-3 space-y-2 rounded-lg border bg-white p-3 text-left">
+                  <p className="text-sm font-medium">Choose Aptos wallet</p>
+                  <div className="flex gap-3 flex-wrap">
+                    {aptosWalletOptions.map((wallet) => (
+                      <Button
+                        key={wallet.name}
+                        variant="outline"
+                        onClick={() => handleAptosWalletSelect(wallet)}
                       >
                         {wallet.name}
                       </Button>

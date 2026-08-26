@@ -44,6 +44,7 @@ import {
 export enum SupportedChainId {
   ARBITRUM_SEPOLIA = 421614,
   ARC_TESTNET = 5042002,
+  APTOS_TESTNET = 999, // placeholder — Aptos is not EVM
   AVAX_FUJI = 43113,
   BASE_SEPOLIA = 84532,
   CODEX_TESTNET = 812242,
@@ -61,7 +62,7 @@ export enum SupportedChainId {
   PLUME_SEPOLIA = 98867,
   POLYGON_AMOY = 80002,
   SEI_TESTNET = 1328,
-  SOLANA_DEVNET = 103,
+  SOLANA_DEVNET = 103, // placeholder — Solana is not EVM
   SONIC_TESTNET = 14601,
   UNICHAIN_SEPOLIA = 1301,
   WORLDCHAIN_SEPOLIA = 4801,
@@ -135,6 +136,17 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
     tokenMessenger: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
     messageTransmitter: "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
     destinationDomain: 26,
+  },
+  [SupportedChainId.APTOS_TESTNET]: {
+    name: "Aptos Testnet",
+    ecosystem: "aptos",
+    usdcAddress:
+      "0x69091fbab5f7d635ee7ac5098cf0c1efbe31d68fec0f2cd565e8d168daf52832",
+    tokenMessenger:
+      "0xc601d3f7b89b77b552726d5d84cbf2a6d3e8a73adbbee3f09fad169a3286bb59",
+    messageTransmitter:
+      "0xa582dc019ae17b0485f7d3fcc4ca85bea7941e3b70a4b682cea22759f36e711f",
+    destinationDomain: 9,
   },
   [SupportedChainId.AVAX_FUJI]: {
     name: "Avalanche Fuji",
@@ -350,3 +362,10 @@ export const SUPPORTED_CHAINS = (Object.keys(CHAIN_CONFIGS).map(Number) as Suppo
 export const SOLANA_RPC_ENDPOINT = "https://api.devnet.solana.com";
 
 export const IRIS_API_URL = "https://iris-api-sandbox.circle.com";
+
+/** Local precompiled Move scripts (served from /public). */
+export const APTOS_DEPOSIT_FOR_BURN_SCRIPT_URL =
+  "/aptos/precompiled-move-scripts/deposit_for_burn.mv";
+
+export const APTOS_RECEIVE_MESSAGE_SCRIPT_URL =
+  "/aptos/precompiled-move-scripts/receive_message.mv";

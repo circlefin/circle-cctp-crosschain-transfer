@@ -9,6 +9,8 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@aptos-labs/ts-sdk": "^7.3.0",
+    "@aptos-labs/wallet-standard": "^2.0.0",
     "@coral-xyz/anchor": "^0.32.1",
     "@radix-ui/react-label": "^2.1.15",
     "@radix-ui/react-select": "^2.3.7",

@@ -50,6 +50,7 @@ import {
 import {
   ensureEvmChain,
   getEvmWalletClient,
+  type AptosWalletConnection,
   type EvmClient,
   type SolanaWalletConnection,
   type WalletConnections,
@@ -122,6 +123,9 @@ export function useCrossChainTransfer() {
         case "solana":
           await approveSolanaUsdc();
           break;
+        case "aptos":
+          await approveAptosUsdc();
+          break;
         case "evm":
           await approveEvmUsdc(
             sourceClient as EvmClient,
@@ -130,11 +134,8 @@ export function useCrossChainTransfer() {
             wallets,
           );
           break;
-        case "aptos":
         case "stellar":
-          throw new Error(
-            `${sourceEcosystem} source transfers are not implemented yet`,
-          );
+          throw new Error("stellar source transfers are not implemented yet");
       }
 
       // Step 2: Burn
@@ -143,6 +144,15 @@ export function useCrossChainTransfer() {
         case "solana":
           burnTx = await burnSolanaUsdc(
             sourceClient as SolanaWalletConnection,
+            numericAmount,
+            destinationChainId,
+            defaultDestination,
+            transferType,
+          );
+          break;
+        case "aptos":
+          burnTx = await burnAptosUsdc(
+            sourceClient as AptosWalletConnection,
             numericAmount,
             destinationChainId,
             defaultDestination,
@@ -173,6 +183,12 @@ export function useCrossChainTransfer() {
             attestation,
           );
           break;
+        case "aptos":
+          await mintAptosUsdc(
+            destinationClient as AptosWalletConnection,
+            attestation,
+          );
+          break;
         case "evm":
           await mintEvmUsdc(
             destinationClient as EvmClient,
@@ -181,10 +197,9 @@ export function useCrossChainTransfer() {
             wallets,
           );
           break;
-        case "aptos":
         case "stellar":
           throw new Error(
-            `${destinationEcosystem} destination transfers are not implemented yet`,
+            "stellar destination transfers are not implemented yet",
           );
       }
     } catch (error) {
@@ -249,6 +264,12 @@ export function useCrossChainTransfer() {
   const approveSolanaUsdc = async () => {
     setCurrentStep("approving");
     return "solana-approve-placeholder";
+  };
+
+  // Aptos deposit_for_burn script withdraws from the primary fungible store (no separate approve)
+  const approveAptosUsdc = async () => {
+    setCurrentStep("approving");
+    return "aptos-approve-placeholder";
   };
 
   // ---------------------------------------------------------------------------
@@ -364,7 +385,6 @@ export function useCrossChainTransfer() {
       getAnchorConnection,
       getPrograms,
       getDepositForBurnPdas,
-      evmAddressToBytes32,
     } = await import("@/lib/solana-utils");
     const { getAssociatedTokenAddress } = await import("@solana/spl-token");
     const walletPublicKey = wallet.publicKey;
@@ -409,20 +429,21 @@ export function useCrossChainTransfer() {
     ) {
       mintRecipient = new PublicKey(destinationAddress);
     } else {
-      const cleanAddress = destinationAddress.replace(/^0x/, "").toLowerCase();
-      if (cleanAddress.length !== 40) {
-        throw new Error(
-          `Invalid EVM address length: ${cleanAddress.length}, expected 40`,
-        );
-      }
-      const formattedAddress = `0x${cleanAddress}`;
-      const bytes32Address = evmAddressToBytes32(formattedAddress);
-      mintRecipient = new PublicKey(hexToBytes(bytes32Address as Hex));
+      // EVM (20-byte) or Aptos (32-byte) → left-padded bytes32 → PublicKey
+      const padded = `0x${destinationAddress
+        .replace(/^0x/, "")
+        .toLowerCase()
+        .padStart(64, "0")}`;
+      mintRecipient = new PublicKey(hexToBytes(padded as Hex));
     }
 
-    const evmAddress = `0x${destinationAddress.replace(/^0x/, "")}`;
     const destinationCaller = new PublicKey(
-      hexToBytes(evmAddressToBytes32(evmAddress) as Hex),
+      hexToBytes(
+        `0x${destinationAddress
+          .replace(/^0x/, "")
+          .toLowerCase()
+          .padStart(64, "0")}` as Hex,
+      ),
     );
     const maxFee =
       transferType === "fast"
@@ -473,6 +494,73 @@ export function useCrossChainTransfer() {
 
     addLog(`Solana burn transaction: ${depositForBurnTx}`);
     return depositForBurnTx;
+  };
+
+  const burnAptosUsdc = async (
+    wallet: AptosWalletConnection,
+    amount: bigint,
+    destinationChainId: number,
+    destinationAddress: string,
+    transferType: "fast" | "standard",
+  ) => {
+    setCurrentStep("burning");
+    addLog("Burning Aptos USDC...");
+
+    const {
+      APTOS_DEPOSIT_FOR_BURN_SCRIPT_URL,
+      signAndSubmitAptosScript,
+      toBytes32AccountAddress,
+    } = await import("@/lib/aptos-utils");
+    const { AccountAddress, U32, U64 } = await import("@aptos-labs/ts-sdk");
+
+    const destinationConfig =
+      CHAIN_CONFIGS[destinationChainId as SupportedChainId];
+    let mintRecipient: ReturnType<typeof toBytes32AccountAddress>;
+    if (destinationConfig.ecosystem === "solana") {
+      const usdcMint = new PublicKey(
+        CHAIN_CONFIGS[SupportedChainId.SOLANA_DEVNET].usdcAddress as string,
+      );
+      const tokenAccount = await getAssociatedTokenAddress(
+        usdcMint,
+        new PublicKey(destinationAddress),
+      );
+      mintRecipient = toBytes32AccountAddress(
+        toHex(bs58.decode(tokenAccount.toBase58())),
+      );
+    } else {
+      mintRecipient = toBytes32AccountAddress(destinationAddress);
+    }
+
+    const maxFee =
+      transferType === "fast"
+        ? await getBufferedFastTransferFee(
+            SupportedChainId.APTOS_TESTNET,
+            destinationChainId as SupportedChainId,
+            amount,
+          )
+        : 0n;
+
+    const burnTx = await signAndSubmitAptosScript(wallet.wallet, wallet.address, {
+      scriptUrl: APTOS_DEPOSIT_FOR_BURN_SCRIPT_URL,
+      functionArguments: [
+        new U64(amount),
+        new U32(destinationConfig.destinationDomain),
+        mintRecipient,
+        AccountAddress.from("0x0"),
+        AccountAddress.from(
+          CHAIN_CONFIGS[SupportedChainId.APTOS_TESTNET].usdcAddress as string,
+        ),
+        new U64(maxFee),
+        new U32(
+          transferType === "fast"
+            ? FAST_FINALITY_THRESHOLD
+            : STANDARD_FINALITY_THRESHOLD,
+        ),
+      ],
+    });
+
+    addLog(`Aptos burn transaction: ${burnTx}`);
+    return burnTx;
   };
 
   // ---------------------------------------------------------------------------
@@ -648,13 +736,19 @@ export function useCrossChainTransfer() {
 
       let remoteTokenAddressHex = "";
       for (const [, config] of Object.entries(CHAIN_CONFIGS)) {
-        if (
-          config.destinationDomain === sourceDomain &&
-          config.ecosystem === "evm"
-        ) {
+        if (config.destinationDomain !== sourceDomain) {
+          continue;
+        }
+        if (config.ecosystem === "evm") {
           remoteTokenAddressHex = evmAddressToBytes32(
             config.usdcAddress as string,
           );
+          break;
+        }
+        if (config.ecosystem === "aptos") {
+          remoteTokenAddressHex = `0x${(config.usdcAddress as string)
+            .replace(/^0x/, "")
+            .padStart(64, "0")}`;
           break;
         }
       }
@@ -750,6 +844,36 @@ export function useCrossChainTransfer() {
     }
   };
 
+  const mintAptosUsdc = async (
+    wallet: AptosWalletConnection,
+    attestation: AttestationResponse,
+  ) => {
+    setCurrentStep("minting");
+    addLog("Minting Aptos USDC...");
+
+    const {
+      APTOS_RECEIVE_MESSAGE_SCRIPT_URL,
+      signAndSubmitAptosScript,
+    } = await import("@/lib/aptos-utils");
+    const { MoveVector } = await import("@aptos-labs/ts-sdk");
+
+    const receiveTx = await signAndSubmitAptosScript(
+      wallet.wallet,
+      wallet.address,
+      {
+        scriptUrl: APTOS_RECEIVE_MESSAGE_SCRIPT_URL,
+        functionArguments: [
+          MoveVector.U8(hexToBytes(attestation.message)),
+          MoveVector.U8(hexToBytes(attestation.attestation)),
+        ],
+      },
+    );
+
+    addLog(`Aptos mint transaction: ${receiveTx}`);
+    setCurrentStep("completed");
+    return receiveTx;
+  };
+
   // ---------------------------------------------------------------------------
   // Helpers — Balance checks, client setup, key management
   // ---------------------------------------------------------------------------
@@ -764,9 +888,18 @@ export function useCrossChainTransfer() {
       case "evm":
         return getEvmBalance(chainId, wallets);
       case "aptos":
+        return getAptosBalance(wallets);
       case "stellar":
         return "0";
     }
+  };
+
+  const getAptosBalance = async (wallets: WalletConnections) => {
+    if (!wallets.aptos) {
+      return "0";
+    }
+    const { getAptosUsdcBalance } = await import("@/lib/aptos-utils");
+    return getAptosUsdcBalance(wallets.aptos.address);
   };
 
   const getSolanaBalance = async (
@@ -858,11 +991,15 @@ export function useCrossChainTransfer() {
         }
         return getEvmWalletClient(wallet, chainId);
       }
-      case "aptos":
+      case "aptos": {
+        const wallet = wallets.aptos;
+        if (!wallet) {
+          throw new Error("Connect an Aptos wallet to continue.");
+        }
+        return wallet;
+      }
       case "stellar":
-        throw new Error(
-          `${CHAIN_CONFIGS[chainId].ecosystem} wallets are not implemented yet`,
-        );
+        throw new Error("stellar wallets are not implemented yet");
     }
   };
 
