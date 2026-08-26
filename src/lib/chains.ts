@@ -69,24 +69,17 @@ export enum SupportedChainId {
   XLAYER_TESTNET = 1952,
 }
 
+export type Ecosystem = "evm" | "solana" | "aptos" | "stellar";
+
 export interface ChainConfig {
   name: string;
+  ecosystem: Ecosystem;
   viemChain?: Chain;
   usdcAddress: Hex | string;
   tokenMessenger: Hex | string;
   messageTransmitter: Hex | string;
   destinationDomain: number;
 }
-
-// Same-origin proxy (see next.config.ts). Wallets still need an absolute RPC URL.
-const arcTestnetProxied = defineChain({
-  ...arcTestnet,
-  rpcUrls: {
-    default: {
-      http: ["/api/rpc/arc"],
-    },
-  },
-});
 
 const edgeTestnet = defineChain({
   id: 33431,
@@ -127,6 +120,7 @@ const pharosAtlantic = defineChain({
 export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
   [SupportedChainId.ARBITRUM_SEPOLIA]: {
     name: "Arbitrum Sepolia",
+    ecosystem: "evm",
     viemChain: arbitrumSepolia,
     usdcAddress: "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
@@ -135,7 +129,8 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
   },
   [SupportedChainId.ARC_TESTNET]: {
     name: "Arc Testnet",
-    viemChain: arcTestnetProxied,
+    ecosystem: "evm",
+    viemChain: arcTestnet,
     usdcAddress: "0x3600000000000000000000000000000000000000",
     tokenMessenger: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
     messageTransmitter: "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
@@ -143,6 +138,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
   },
   [SupportedChainId.AVAX_FUJI]: {
     name: "Avalanche Fuji",
+    ecosystem: "evm",
     viemChain: avalancheFuji,
     usdcAddress: "0x5425890298aed601595a70AB815c96711a31Bc65",
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
@@ -151,6 +147,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
   },
   [SupportedChainId.BASE_SEPOLIA]: {
     name: "Base Sepolia",
+    ecosystem: "evm",
     viemChain: baseSepolia,
     usdcAddress: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
@@ -159,6 +156,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
   },
   [SupportedChainId.CODEX_TESTNET]: {
     name: "Codex Testnet",
+    ecosystem: "evm",
     viemChain: codexTestnet,
     usdcAddress: "0x6d7f141b6819C2c9CC2f818e6ad549E7Ca090F8f",
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
@@ -167,6 +165,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
   },
   [SupportedChainId.CRONOS_TESTNET]: {
     name: "Cronos Testnet",
+    ecosystem: "evm",
     viemChain: cronosTestnet,
     usdcAddress: "0xEb33dc5fac03833e132593659e1dE7256aB59794",
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
@@ -175,6 +174,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
   },
   [SupportedChainId.EDGE_TESTNET]: {
     name: "Edge Testnet",
+    ecosystem: "evm",
     viemChain: edgeTestnet,
     usdcAddress: "0x2d9F7CAD728051AA35Ecdc472a14cf8cDF5CFD6B",
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
@@ -183,6 +183,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
   },
   [SupportedChainId.ETH_SEPOLIA]: {
     name: "Ethereum Sepolia",
+    ecosystem: "evm",
     viemChain: sepolia,
     usdcAddress: "0x1c7d4b196cb0c7b01d743fbc6116a902379c7238",
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
@@ -191,6 +192,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
   },
   [SupportedChainId.HYPEREVM_TESTNET]: {
     name: "HyperEvm Testnet",
+    ecosystem: "evm",
     viemChain: hyperliquidEvmTestnet,
     usdcAddress: "0x2B3370eE501B4a559b57D449569354196457D8Ab",
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
@@ -199,6 +201,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
   },
   [SupportedChainId.INJECTIVE_TESTNET]: {
     name: "Injective Testnet",
+    ecosystem: "evm",
     viemChain: injectiveTestnet,
     usdcAddress: "0x0C382e685bbeeFE5d3d9C29e29E341fEE8E84C5d",
     tokenMessenger: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
@@ -207,6 +210,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
   },
   [SupportedChainId.INK_SEPOLIA]: {
     name: "Ink Sepolia",
+    ecosystem: "evm",
     viemChain: inkSepolia,
     usdcAddress: "0xFabab97dCE620294D2B0b0e46C68964e326300Ac",
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
@@ -215,6 +219,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
   },
   [SupportedChainId.LINEA_SEPOLIA]: {
     name: "Linea Sepolia",
+    ecosystem: "evm",
     viemChain: lineaSepolia,
     usdcAddress: "0xFEce4462D57bD51A6A552365A011b95f0E16d9B7",
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
@@ -223,6 +228,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
   },
   [SupportedChainId.MONAD_TESTNET]: {
     name: "Monad Testnet",
+    ecosystem: "evm",
     viemChain: monadTestnet,
     usdcAddress: "0x534b2f3a21130d7a60830c2df862319e593943a3",
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
@@ -231,6 +237,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
   },
   [SupportedChainId.MORPH_HOODI]: {
     name: "Morph Hoodi",
+    ecosystem: "evm",
     viemChain: morphHoodi,
     usdcAddress: "0x7433b41C6c5e1d58D4Da99483609520255ab661B",
     tokenMessenger: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
@@ -239,6 +246,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
   },
   [SupportedChainId.OPTIMISM_SEPOLIA]: {
     name: "Optimism Sepolia",
+    ecosystem: "evm",
     viemChain: optimismSepolia,
     usdcAddress: "0x5fd84259d66Cd46123540766Be93DFE6D43130D7",
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
@@ -247,6 +255,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
   },
   [SupportedChainId.PHAROS_ATLANTIC]: {
     name: "Pharos Atlantic",
+    ecosystem: "evm",
     viemChain: pharosAtlantic,
     usdcAddress: "0xcfc8330f4bcab529c625d12781b1c19466a9fc8b",
     tokenMessenger: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
@@ -255,6 +264,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
   },
   [SupportedChainId.PLUME_SEPOLIA]: {
     name: "Plume Sepolia",
+    ecosystem: "evm",
     viemChain: plumeSepolia,
     usdcAddress: "0xcB5f30e335672893c7eb944B374c196392C19D18",
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
@@ -263,6 +273,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
   },
   [SupportedChainId.POLYGON_AMOY]: {
     name: "Polygon Amoy",
+    ecosystem: "evm",
     viemChain: polygonAmoy,
     usdcAddress: "0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582",
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
@@ -271,6 +282,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
   },
   [SupportedChainId.SEI_TESTNET]: {
     name: "Sei Testnet",
+    ecosystem: "evm",
     viemChain: seiTestnet,
     usdcAddress: "0x4fCF1784B31630811181f670Aea7A7bEF803eaED",
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
@@ -279,6 +291,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
   },
   [SupportedChainId.SOLANA_DEVNET]: {
     name: "Solana Devnet",
+    ecosystem: "solana",
     usdcAddress: "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
     tokenMessenger: "CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe",
     messageTransmitter: "CCTPV2Sm4AdWt5296sk4P66VBZ7bEhcARwFaaS9YPbeC",
@@ -286,6 +299,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
   },
   [SupportedChainId.SONIC_TESTNET]: {
     name: "Sonic Testnet",
+    ecosystem: "evm",
     viemChain: sonicTestnet,
     usdcAddress: "0x0BA304580ee7c9a980CF72e55f5Ed2E9fd30Bc51",
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
@@ -294,6 +308,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
   },
   [SupportedChainId.UNICHAIN_SEPOLIA]: {
     name: "Unichain Sepolia",
+    ecosystem: "evm",
     viemChain: unichainSepolia,
     usdcAddress: "0x31d0220469e10c4E71834a79b1f276d740d3768F",
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
@@ -302,6 +317,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
   },
   [SupportedChainId.WORLDCHAIN_SEPOLIA]: {
     name: "Worldchain Sepolia",
+    ecosystem: "evm",
     viemChain: worldchainSepolia,
     usdcAddress: "0x66145f38cBAC35Ca6F1Dfb4914dF98F1614aeA88",
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
@@ -310,6 +326,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
   },
   [SupportedChainId.XDC_TESTNET]: {
     name: "XDC Testnet",
+    ecosystem: "evm",
     viemChain: xdcTestnet,
     usdcAddress: "0xb5AB69F7bBada22B28e79C8FFAECe55eF1c771D4",
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
@@ -318,6 +335,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
   },
   [SupportedChainId.XLAYER_TESTNET]: {
     name: "XLayer Testnet",
+    ecosystem: "evm",
     viemChain: xLayerTestnet,
     usdcAddress: "0xdec90b78111ba2fc6fc6d84d8b9ec159a2d4b9b3",
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",

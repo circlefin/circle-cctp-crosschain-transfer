@@ -45,10 +45,12 @@ import {
   connectEvmWallet,
   connectSolanaWallet,
   discoverEvmWallets,
+  discoverSolanaWallets,
   disconnectSolanaWallet,
   type EvmProviderOption,
   type WalletConnections,
 } from "@/lib/browser-wallets";
+import type { Wallet } from "@wallet-standard/core";
 
 export default function Home() {
   const { currentStep, logs, error, executeTransfer, getBalance, reset } =
@@ -68,18 +70,22 @@ export default function Home() {
   const [wallets, setWallets] = useState<WalletConnections>({
     evm: null,
     solana: null,
+    aptos: null,
+    stellar: null,
   });
   const [evmWalletOptions, setEvmWalletOptions] = useState<EvmProviderOption[]>(
     [],
   );
   const [showEvmWalletPicker, setShowEvmWalletPicker] = useState(false);
+  const [solanaWalletOptions, setSolanaWalletOptions] = useState<Wallet[]>([]);
+  const [showSolanaWalletPicker, setShowSolanaWalletPicker] = useState(false);
 
+  const sourceEcosystem = CHAIN_CONFIGS[sourceChain].ecosystem;
+  const destinationEcosystem = CHAIN_CONFIGS[destinationChain].ecosystem;
   const needsEvmWallet =
-    sourceChain !== SupportedChainId.SOLANA_DEVNET ||
-    destinationChain !== SupportedChainId.SOLANA_DEVNET;
+    sourceEcosystem === "evm" || destinationEcosystem === "evm";
   const needsSolanaWallet =
-    sourceChain === SupportedChainId.SOLANA_DEVNET ||
-    destinationChain === SupportedChainId.SOLANA_DEVNET;
+    sourceEcosystem === "solana" || destinationEcosystem === "solana";
   const missingRequiredWallet =
     (needsEvmWallet && !wallets.evm) || (needsSolanaWallet && !wallets.solana);
 
@@ -154,10 +160,27 @@ export default function Home() {
     }
 
     try {
-      const connection = await connectSolanaWallet();
+      const options = await discoverSolanaWallets();
+      if (options.length > 1) {
+        setSolanaWalletOptions(options);
+        setShowSolanaWalletPicker(true);
+        return;
+      }
+
+      const connection = await connectSolanaWallet(options[0]);
       setWallets((current) => ({ ...current, solana: connection }));
     } catch (error) {
       console.error("Failed to connect Solana wallet:", error);
+    }
+  };
+
+  const handleSolanaWalletSelect = async (wallet: Wallet) => {
+    try {
+      const connection = await connectSolanaWallet(wallet);
+      setWallets((current) => ({ ...current, solana: connection }));
+      setShowSolanaWalletPicker(false);
+    } catch (error) {
+      console.error("Failed to connect selected Solana wallet:", error);
     }
   };
 
@@ -229,9 +252,25 @@ export default function Home() {
               </Button>
               <p className="text-sm text-muted-foreground mt-2">
                 {wallets.solana
-                  ? formatAddress(wallets.solana.address)
+                  ? `${formatAddress(wallets.solana.address)} (${wallets.solana.walletName})`
                   : "Required for Solana source or destination chains"}
               </p>
+              {showSolanaWalletPicker && (
+                <div className="mt-3 space-y-2 rounded-lg border bg-white p-3 text-left">
+                  <p className="text-sm font-medium">Choose Solana wallet</p>
+                  <div className="flex gap-3 flex-wrap">
+                    {solanaWalletOptions.map((wallet) => (
+                      <Button
+                        key={wallet.name}
+                        variant="outline"
+                        onClick={() => handleSolanaWalletSelect(wallet)}
+                      >
+                        {wallet.name}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           <p className="text-sm text-center">
