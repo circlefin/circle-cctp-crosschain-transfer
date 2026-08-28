@@ -34,7 +34,7 @@ import {
   polygonAmoy,
   seiTestnet,
   sepolia,
-  sonicTestnet,
+  sonicTestnet as viemSonicTestnet,
   unichainSepolia,
   worldchainSepolia,
   xdcTestnet,
@@ -86,6 +86,13 @@ const arcTestnetProxied = defineChain({
       http: ["/api/rpc/arc"],
     },
   },
+});
+
+// viem's `sonicTestnet` still carries the pre-migration id (64165) while pointing at
+// the RPC that now serves Sonic Testnet, so pin the id this app already uses.
+const sonicTestnet = defineChain({
+  ...viemSonicTestnet,
+  id: SupportedChainId.SONIC_TESTNET,
 });
 
 const edgeTestnet = defineChain({
