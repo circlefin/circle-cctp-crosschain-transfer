@@ -58,6 +58,7 @@ The app will be running at `http://localhost:3000`.
 - Morph Hoodi
 - Optimism Sepolia
 - Pharos Atlantic
+- Plasma Testnet
 - Plume Sepolia
 - Polygon Amoy
 - Sei Testnet

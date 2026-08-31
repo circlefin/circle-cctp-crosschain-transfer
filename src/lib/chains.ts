@@ -30,11 +30,11 @@ import {
   lineaSepolia,
   monadTestnet,
   optimismSepolia,
+  plasmaTestnet,
   plumeSepolia,
   polygonAmoy,
   seiTestnet,
   sepolia,
-  sonicTestnet,
   unichainSepolia,
   worldchainSepolia,
   xdcTestnet,
@@ -59,6 +59,7 @@ export enum SupportedChainId {
   MORPH_HOODI = 2910,
   OPTIMISM_SEPOLIA = 11155420,
   PHAROS_ATLANTIC = 688689,
+  PLASMA_TESTNET = 9746,
   PLUME_SEPOLIA = 98867,
   POLYGON_AMOY = 80002,
   SEI_TESTNET = 1328,
@@ -113,6 +114,22 @@ const pharosAtlantic = defineChain({
     default: {
       name: "Pharos Testnet Explorer",
       url: "https://atlantic.pharosscan.xyz/",
+    },
+  },
+  testnet: true,
+});
+
+/** viem's sonicTestnet still uses chain id 64165; Sonic Testnet is 14601. */
+const sonicTestnet = defineChain({
+  id: 14601,
+  name: "Sonic Testnet",
+  nativeCurrency: { decimals: 18, name: "Sonic", symbol: "S" },
+  rpcUrls: { default: { http: ["https://rpc.testnet.soniclabs.com"] } },
+  blockExplorers: {
+    default: {
+      name: "SonicScan",
+      url: "https://testnet.sonicscan.org",
+      apiUrl: "https://api.etherscan.io/v2/api?chainid=14601",
     },
   },
   testnet: true,
@@ -273,6 +290,15 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
     tokenMessenger: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
     messageTransmitter: "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
     destinationDomain: 31,
+  },
+  [SupportedChainId.PLASMA_TESTNET]: {
+    name: "Plasma Testnet",
+    ecosystem: "evm",
+    viemChain: plasmaTestnet,
+    usdcAddress: "0xe67fb267022cba8064dd388cc2fed724f3120d9d",
+    tokenMessenger: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
+    messageTransmitter: "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
+    destinationDomain: 33,
   },
   [SupportedChainId.PLUME_SEPOLIA]: {
     name: "Plume Sepolia",
