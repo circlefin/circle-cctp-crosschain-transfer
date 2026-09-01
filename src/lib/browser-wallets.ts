@@ -297,6 +297,17 @@ export async function disconnectAptosWallet(
   await connection?.disconnect();
 }
 
+/** EIP-1193 error for a chain the wallet does not recognise yet. */
+const CHAIN_NOT_ADDED = 4902;
+
+function errorCode(error: unknown): number | undefined {
+  const e = error as {
+    code?: number;
+    data?: { originalError?: { code?: number } };
+  };
+  return e?.code ?? e?.data?.originalError?.code;
+}
+
 export async function ensureEvmChain(
   provider: EvmProvider,
   chainId: SupportedChainId
@@ -308,20 +319,33 @@ export async function ensureEvmChain(
 
   const hexChainId = `0x${chainId.toString(16)}`;
 
-  await provider.request({
-    method: "wallet_addEthereumChain",
-    params: [
-      {
-        chainId: hexChainId,
-        chainName: chain.name,
-        nativeCurrency: chain.nativeCurrency,
-        rpcUrls: chain.rpcUrls.default.http,
-        blockExplorerUrls: chain.blockExplorers
-          ? Object.values(chain.blockExplorers).map(({ url }) => url)
-          : undefined,
-      },
-    ],
-  });
+  try {
+    await provider.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: hexChainId }],
+    });
+  } catch (error: unknown) {
+    // Anything other than "chain not added" is the user's answer, including a
+    // 4001 rejection that the caller surfaces in the banner.
+    if (errorCode(error) !== CHAIN_NOT_ADDED) {
+      throw error;
+    }
+
+    await provider.request({
+      method: "wallet_addEthereumChain",
+      params: [
+        {
+          chainId: hexChainId,
+          chainName: chain.name,
+          nativeCurrency: chain.nativeCurrency,
+          rpcUrls: chain.rpcUrls.default.http,
+          blockExplorerUrls: chain.blockExplorers
+            ? Object.values(chain.blockExplorers).map(({ url }) => url)
+            : undefined,
+        },
+      ],
+    });
+  }
 
   const activeChainId = (await provider.request({ method: "eth_chainId" })) as string;
   if (parseInt(activeChainId, 16) !== chainId) {
