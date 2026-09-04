@@ -36,6 +36,7 @@ import {
   SupportedChainId,
   SUPPORTED_CHAINS,
   CHAIN_CONFIGS,
+  supportsFastTransfer,
 } from "@/lib/chains";
 import { ProgressSteps } from "@/components/progress-step";
 import { TransferLog } from "@/components/transfer-log";
@@ -69,7 +70,9 @@ export default function Home() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isTransferring, setIsTransferring] = useState(false);
   const [showFinalTime, setShowFinalTime] = useState(false);
-  const [transferType, setTransferType] = useState<"fast" | "standard">("fast");
+  const [transferType, setTransferType] = useState<"fast" | "standard">(
+    "standard",
+  );
   const [balance, setBalance] = useState("0");
   const [wallets, setWallets] = useState<WalletConnections>({
     evm: null,
@@ -90,6 +93,7 @@ export default function Home() {
 
   const sourceEcosystem = CHAIN_CONFIGS[sourceChain].ecosystem;
   const destinationEcosystem = CHAIN_CONFIGS[destinationChain].ecosystem;
+  const fastTransferSupported = supportsFastTransfer(sourceChain);
   const needsEvmWallet =
     sourceEcosystem === "evm" || destinationEcosystem === "evm";
   const needsSolanaWallet =
@@ -127,6 +131,14 @@ export default function Home() {
     setIsTransferring(false);
     setShowFinalTime(false);
     setElapsedSeconds(0);
+  };
+
+  const handleSourceChainChange = (value: string) => {
+    const chainId = Number(value) as SupportedChainId;
+    setSourceChain(chainId);
+    if (!supportsFastTransfer(chainId)) {
+      setTransferType("standard");
+    }
   };
 
   const handleEvmWalletClick = async () => {
@@ -367,9 +379,12 @@ export default function Home() {
             <TransferTypeSelector
               value={transferType}
               onChange={setTransferType}
+              fastDisabled={!fastTransferSupported}
             />
             <p className="text-sm text-muted-foreground">
-              {transferType === "fast"
+              {!fastTransferSupported
+                ? `Fast Transfer is not available from ${CHAIN_CONFIGS[sourceChain].name}.`
+                : transferType === "fast"
                 ? "Faster transfers with lower finality threshold (1000 blocks)"
                 : "Standard transfers with higher finality (2000 blocks)"}
             </p>
@@ -379,7 +394,7 @@ export default function Home() {
               <Label>Source Chain</Label>
               <Select
                 value={String(sourceChain)}
-                onValueChange={(value) => setSourceChain(Number(value))}
+                onValueChange={handleSourceChainChange}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select source chain" />
