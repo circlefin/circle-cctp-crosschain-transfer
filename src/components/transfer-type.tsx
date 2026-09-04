@@ -23,14 +23,18 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 export function TransferTypeSelector({
   value,
   onChange,
+  fastDisabled = false,
 }: {
   value: "fast" | "standard";
   onChange: (value: "fast" | "standard") => void;
+  fastDisabled?: boolean;
 }) {
   return (
     <Tabs value={value} onValueChange={(v) => onChange(v as "fast" | "standard")}>
       <TabsList className="grid w-full grid-cols-2">
-        <TabsTrigger value="fast">Fast Transfer</TabsTrigger>
+        <TabsTrigger value="fast" disabled={fastDisabled}>
+          Fast Transfer
+        </TabsTrigger>
         <TabsTrigger value="standard">Standard Transfer</TabsTrigger>
       </TabsList>
     </Tabs>
