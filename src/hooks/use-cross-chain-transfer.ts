@@ -253,10 +253,13 @@ export function useCrossChainTransfer() {
     });
 
     addLog(`USDC Approval Tx: ${tx}`);
-    await createPublicClient({
+    const receipt = await createPublicClient({
       chain: CHAIN_CONFIGS[sourceChainId as SupportedChainId].viemChain,
       transport: http(),
     }).waitForTransactionReceipt({ hash: tx });
+    if (receipt.status !== "success") {
+      throw new Error(`USDC approval transaction reverted: ${tx}`);
+    }
     return tx;
   };
 
@@ -364,10 +367,13 @@ export function useCrossChainTransfer() {
     });
 
     addLog(`Burn Tx: ${tx}`);
-    await createPublicClient({
+    const receipt = await createPublicClient({
       chain: CHAIN_CONFIGS[sourceChainId as SupportedChainId].viemChain,
       transport: http(),
     }).waitForTransactionReceipt({ hash: tx });
+    if (receipt.status !== "success") {
+      throw new Error(`Burn transaction reverted: ${tx}`);
+    }
     return tx;
   };
 
