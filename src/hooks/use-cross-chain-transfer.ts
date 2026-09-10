@@ -72,6 +72,7 @@ interface AttestationResponse {
 }
 
 interface FastTransferFeeResponse {
+  finalityThreshold: number;
   minimumFee: number | string;
 }
 
@@ -1024,7 +1025,13 @@ export function useCrossChainTransfer() {
     }
 
     const feePayload = (await response.json()) as FastTransferFeeResponse[];
-    const feeEntry = feePayload[0];
+    // Select the fee for the tier we actually burn at (fast transfers pass
+    // minFinalityThreshold = FAST_FINALITY_THRESHOLD) rather than trusting the
+    // order of the response array.
+    const feeEntry =
+      feePayload.find(
+        (entry) => entry.finalityThreshold <= FAST_FINALITY_THRESHOLD,
+      ) ?? feePayload[0];
     if (!feeEntry) {
       throw new Error("No fee returned for this route");
     }
