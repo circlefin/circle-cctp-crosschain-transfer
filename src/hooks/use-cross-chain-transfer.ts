@@ -453,14 +453,10 @@ export function useCrossChainTransfer() {
       mintRecipient = new PublicKey(hexToBytes(padded as Hex));
     }
 
-    const destinationCaller = new PublicKey(
-      hexToBytes(
-        `0x${destinationAddress
-          .replace(/^0x/, "")
-          .toLowerCase()
-          .padStart(64, "0")}` as Hex,
-      ),
-    );
+    // A zero destinationCaller lets any address deliver the message on the
+    // destination chain, matching the EVM (BYTES32_ZERO), Aptos and Sui (0x0)
+    // burn paths.
+    const destinationCaller = PublicKey.default;
     const { maxFee, minFinalityThreshold } = await resolveBurnFeeParams(
       SupportedChainId.SOLANA_DEVNET,
       destinationChainId as SupportedChainId,
