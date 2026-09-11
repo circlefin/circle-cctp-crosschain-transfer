@@ -55,6 +55,7 @@ import {
   type SolanaWalletConnection,
   type WalletConnections,
 } from "@/lib/browser-wallets";
+import { AttestationResilienceManager } from "@/utils/attestation-resilience";
 
 export type TransferStep =
   | "idle"
@@ -78,7 +79,6 @@ interface FastTransferFeeResponse {
 const DEFAULT_DECIMALS = 6;
 const FAST_FINALITY_THRESHOLD = 1000;
 const STANDARD_FINALITY_THRESHOLD = 2000;
-const ATTESTATION_POLL_INTERVAL_MS = 5000;
 const MINT_MAX_RETRIES = 3;
 const MINT_RETRY_BASE_DELAY_MS = 2000;
 const GAS_BUFFER_PERCENT = 120n;
@@ -564,7 +564,7 @@ export function useCrossChainTransfer() {
   };
 
   // ---------------------------------------------------------------------------
-  // Step 3: Attest — Poll Circle's IRIS API until attestation is complete
+  // Step 3: Attest — Resilient IRIS API polling with Exponential Backoff & Telemetry
   // ---------------------------------------------------------------------------
 
   const retrieveAttestation = async (
@@ -572,33 +572,59 @@ export function useCrossChainTransfer() {
     sourceChainId: number,
   ): Promise<AttestationResponse> => {
     setCurrentStep("waiting-attestation");
-    addLog("Retrieving attestation...");
+    addLog("Initializing resilient attestation fetch...");
 
-    const url = `${IRIS_API_URL}/v2/messages/${CHAIN_CONFIGS[sourceChainId as SupportedChainId].destinationDomain}?transactionHash=${transactionHash}`;
+    const url = `${IRIS_API_URL}/v2/messages/${
+      CHAIN_CONFIGS[sourceChainId as SupportedChainId].destinationDomain
+    }?transactionHash=${transactionHash}`;
 
-    while (true) {
-      const response = await fetch(url);
-      if (response.status === 404) {
-        await new Promise((resolve) =>
-          setTimeout(resolve, ATTESTATION_POLL_INTERVAL_MS),
-        );
-        continue;
-      }
-      if (!response.ok) {
-        throw new Error(
-          `Attestation request failed with status ${response.status}`,
-        );
-      }
-      const data = await response.json();
-      if (data?.messages?.[0]?.status === "complete") {
-        addLog("Attestation retrieved");
-        return data.messages[0] as AttestationResponse;
-      }
-      addLog("Waiting for attestation...");
-      await new Promise((resolve) =>
-        setTimeout(resolve, ATTESTATION_POLL_INTERVAL_MS),
+    const resilienceManager = new AttestationResilienceManager({
+      maxAttempts: 30,
+      initialDelayMs: 3000,
+      maxDelayMs: 25000,
+      backoffFactor: 1.4,
+    });
+
+    const { attestation: rawMessage, telemetry } =
+      await resilienceManager.executeResilientFetch(
+        async () => {
+          const response = await fetch(url);
+          if (response.status === 404) {
+            return { status: "pending" };
+          }
+          if (!response.ok) {
+            throw new Error(`IRIS API HTTP Error: ${response.status}`);
+          }
+          const data = await response.json();
+          const msg = data?.messages?.[0];
+
+          if (msg?.status === "complete") {
+            return {
+              status: "complete",
+              attestation: JSON.stringify(msg),
+            };
+          }
+          return { status: "pending" };
+        },
+        (attempt, currentMetrics) => {
+          const elapsedSec = (
+            (Date.now() - currentMetrics.startTime) /
+            1000
+          ).toFixed(1);
+          addLog(
+            `Waiting for attestation... Attempt #${attempt} [Elapsed: ${elapsedSec}s]`,
+          );
+        },
       );
-    }
+
+    const parsedAttestation = JSON.parse(rawMessage) as AttestationResponse;
+    addLog(
+      `Attestation retrieved in ${
+        ((telemetry.durationMs || 0) / 1000).toFixed(2)
+      }s (${telemetry.attempts} attempts)`,
+    );
+
+    return parsedAttestation;
   };
 
   // ---------------------------------------------------------------------------
