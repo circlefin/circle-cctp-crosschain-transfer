@@ -129,6 +129,21 @@ export default function Home() {
     setElapsedSeconds(0);
   };
 
+  const handleSourceChainChange = (value: string) => {
+    const nextSourceChain = Number(value) as SupportedChainId;
+    setSourceChain(nextSourceChain);
+
+    if (nextSourceChain === destinationChain) {
+      const nextDestinationChain = SUPPORTED_CHAINS.find(
+        (chainId) => chainId !== nextSourceChain,
+      );
+
+      if (nextDestinationChain !== undefined) {
+        setDestinationChain(nextDestinationChain);
+      }
+    }
+  };
+
   const handleEvmWalletClick = async () => {
     if (wallets.evm) {
       setWallets((current) => ({ ...current, evm: null }));
@@ -379,7 +394,7 @@ export default function Home() {
               <Label>Source Chain</Label>
               <Select
                 value={String(sourceChain)}
-                onValueChange={(value) => setSourceChain(Number(value))}
+                onValueChange={handleSourceChainChange}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select source chain" />
@@ -456,6 +471,7 @@ export default function Home() {
               onClick={handleStartTransfer}
               disabled={
                 isTransferring ||
+                sourceChain === destinationChain ||
                 currentStep === "completed" ||
                 !amount ||
                 parseFloat(amount) <= 0 ||

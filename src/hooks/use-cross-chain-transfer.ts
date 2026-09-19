@@ -105,6 +105,10 @@ export function useCrossChainTransfer() {
     wallets: WalletConnections,
   ) => {
     try {
+      if (sourceChainId === destinationChainId) {
+        throw new Error("Source and destination chains must be different.");
+      }
+
       const numericAmount = parseUnits(amount, DEFAULT_DECIMALS);
       const sourceEcosystem =
         CHAIN_CONFIGS[sourceChainId as SupportedChainId].ecosystem;
