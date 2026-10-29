@@ -385,6 +385,26 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
 export const SUPPORTED_CHAINS = (Object.keys(CHAIN_CONFIGS).map(Number) as SupportedChainId[])
   .sort((a, b) => CHAIN_CONFIGS[a].name.localeCompare(CHAIN_CONFIGS[b].name));
 
+const FAST_TRANSFER_SOURCE_CHAINS = new Set<SupportedChainId>([
+  SupportedChainId.ARBITRUM_SEPOLIA,
+  SupportedChainId.BASE_SEPOLIA,
+  SupportedChainId.CODEX_TESTNET,
+  SupportedChainId.EDGE_TESTNET,
+  SupportedChainId.ETH_SEPOLIA,
+  SupportedChainId.INK_SEPOLIA,
+  SupportedChainId.LINEA_SEPOLIA,
+  SupportedChainId.MORPH_HOODI,
+  SupportedChainId.OPTIMISM_SEPOLIA,
+  SupportedChainId.PLUME_SEPOLIA,
+  SupportedChainId.SOLANA_DEVNET,
+  SupportedChainId.UNICHAIN_SEPOLIA,
+  SupportedChainId.WORLDCHAIN_SEPOLIA,
+]);
+
+export function supportsFastTransfer(chainId: SupportedChainId) {
+  return FAST_TRANSFER_SOURCE_CHAINS.has(chainId);
+}
+
 export const SOLANA_RPC_ENDPOINT = "https://api.devnet.solana.com";
 
 export const IRIS_API_URL = "https://iris-api-sandbox.circle.com";

@@ -38,6 +38,7 @@ import {
   CHAIN_CONFIGS,
   SOLANA_RPC_ENDPOINT,
   IRIS_API_URL,
+  supportsFastTransfer,
 } from "@/lib/chains";
 import {
   createDepositForBurnInstruction,
@@ -77,6 +78,7 @@ interface AttestationResponse {
 }
 
 interface FastTransferFeeResponse {
+  finalityThreshold: number;
   minimumFee: number | string;
 }
 
@@ -115,6 +117,15 @@ export function useCrossChainTransfer() {
         CHAIN_CONFIGS[sourceChainId as SupportedChainId].ecosystem;
       const destinationEcosystem =
         CHAIN_CONFIGS[destinationChainId as SupportedChainId].ecosystem;
+
+      if (
+        transferType === "fast" &&
+        !supportsFastTransfer(sourceChainId as SupportedChainId)
+      ) {
+        throw new Error(
+          `Fast Transfer is not available from ${CHAIN_CONFIGS[sourceChainId as SupportedChainId].name}.`,
+        );
+      }
 
       const sourceClient = getClients(sourceChainId, wallets);
       const destinationClient = getClients(destinationChainId, wallets);
@@ -914,9 +925,12 @@ export function useCrossChainTransfer() {
     }
 
     const feePayload = (await response.json()) as FastTransferFeeResponse[];
-    const feeEntry = feePayload[0];
+    const feeEntry = feePayload.find(
+      ({ finalityThreshold }) =>
+        finalityThreshold === FAST_FINALITY_THRESHOLD,
+    );
     if (!feeEntry) {
-      throw new Error("No fee returned for this route");
+      throw new Error("No Fast Transfer fee returned for this route");
     }
 
     const minimumFeeBpsHundredths = parseFeeBps(feeEntry.minimumFee);
