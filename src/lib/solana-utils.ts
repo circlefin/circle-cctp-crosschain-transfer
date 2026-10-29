@@ -16,214 +16,211 @@
  * limitations under the License.
  */
 
-import * as anchor from "@coral-xyz/anchor";
 import {
+  Connection,
   Keypair,
   PublicKey,
+  SystemProgram,
   Transaction,
-  VersionedTransaction,
+  TransactionInstruction,
 } from "@solana/web3.js";
-import { getAssociatedTokenAddress } from "@solana/spl-token";
 
 import { SOLANA_RPC_ENDPOINT } from "./chains";
 
-// Import IDLs from JSON files
-import MessageTransmitterIdl from "../solana/idl/message_transmitter.json";
-import TokenMessengerMinterIdl from "../solana/idl/token_messenger_minter.json";
-import type { TokenMessengerMinterV2 } from "../solana/types/token_messenger_minter";
-import type { MessageTransmitterV2 } from "../solana/types/message_transmitter";
+export const MESSAGE_TRANSMITTER_PROGRAM_ID = new PublicKey(
+  "CCTPV2Sm4AdWt5296sk4P66VBZ7bEhcARwFaaS9YPbeC",
+);
+export const TOKEN_MESSENGER_MINTER_PROGRAM_ID = new PublicKey(
+  "CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe",
+);
+export const TOKEN_PROGRAM_ID = new PublicKey(
+  "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+);
+export const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey(
+  "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+);
 
-export interface FindProgramAddressResponse {
-  publicKey: anchor.web3.PublicKey;
-  bump: number;
-}
+// Anchor instruction discriminators from the on-chain IDLs
+const DEPOSIT_FOR_BURN_DISCRIMINATOR = Uint8Array.from([
+  215, 60, 61, 46, 114, 55, 128, 176,
+]);
+const RECEIVE_MESSAGE_DISCRIMINATOR = Uint8Array.from([
+  38, 144, 127, 225, 31, 225, 238, 25,
+]);
 
-export interface SolanaAnchorWalletProvider {
+// TokenMessenger account: 8-byte Anchor disc + fields; fee_recipient starts here
+const TOKEN_MESSENGER_FEE_RECIPIENT_OFFSET = 8 + 32 + 32 + 32 + 4 + 1;
+// SPL Token account: mint (32) + owner (32) + amount (u64 LE)
+const TOKEN_ACCOUNT_AMOUNT_OFFSET = 64;
+
+export type SolanaWalletSigner = {
   publicKey: PublicKey;
-  signTransaction<T extends Transaction | VersionedTransaction>(tx: T): Promise<T>;
-  signAllTransactions?<T extends Transaction | VersionedTransaction>(
-    txs: T[]
-  ): Promise<T[]>;
+  signTransaction(tx: Transaction): Promise<Transaction>;
+};
+
+export function getSolanaConnection(
+  rpcUrl: string = SOLANA_RPC_ENDPOINT,
+): Connection {
+  return new Connection(rpcUrl, "confirmed");
 }
 
-export const isVersionedTransaction = (
-  tx: Transaction | VersionedTransaction
-): tx is VersionedTransaction => {
-  return "version" in tx;
-};
+async function findProgramAddress(
+  label: string,
+  programId: PublicKey,
+  extraSeeds: (string | Uint8Array | PublicKey)[] = [],
+): Promise<PublicKey> {
+  const seeds: Uint8Array[] = [new TextEncoder().encode(label)];
+  for (const seed of extraSeeds) {
+    if (typeof seed === "string") {
+      seeds.push(new TextEncoder().encode(seed));
+    } else if (seed instanceof PublicKey) {
+      seeds.push(seed.toBytes());
+    } else {
+      seeds.push(seed);
+    }
+  }
+  const [pda] = await PublicKey.findProgramAddress(seeds, programId);
+  return pda;
+}
 
-// Configure client to use the provider and return it
-export const getAnchorConnection = (
-  walletProvider: SolanaAnchorWalletProvider,
-  rpcUrl: string = SOLANA_RPC_ENDPOINT
-) => {
-  const connection = new anchor.web3.Connection(rpcUrl, "confirmed");
-  const wallet: anchor.Wallet = {
-    payer: Keypair.generate(),
-    publicKey: walletProvider.publicKey,
-    signTransaction: (tx) => walletProvider.signTransaction(tx),
-    signAllTransactions: (txs) =>
-      walletProvider.signAllTransactions
-        ? walletProvider.signAllTransactions(txs)
-        : Promise.all(txs.map((tx) => walletProvider.signTransaction(tx))),
-  };
-  const provider = new anchor.AnchorProvider(connection, wallet, {
-    preflightCommitment: "confirmed",
-  });
-  anchor.setProvider(provider);
-  return provider;
-};
-
-export const getPrograms = (provider: anchor.AnchorProvider) => {
-  // Anchor will automatically use the program ID from the IDL metadata
-  const messageTransmitterProgram = new anchor.Program<MessageTransmitterV2>(
-    MessageTransmitterIdl as MessageTransmitterV2,
-    provider
+export async function getAssociatedTokenAddress(
+  mint: PublicKey,
+  owner: PublicKey,
+): Promise<PublicKey> {
+  const [ata] = await PublicKey.findProgramAddress(
+    [owner.toBytes(), TOKEN_PROGRAM_ID.toBytes(), mint.toBytes()],
+    ASSOCIATED_TOKEN_PROGRAM_ID,
   );
+  return ata;
+}
 
-  const tokenMessengerMinterProgram =
-    new anchor.Program<TokenMessengerMinterV2>(
-      TokenMessengerMinterIdl as TokenMessengerMinterV2,
-      provider
-    );
+export async function getTokenAccountAmount(
+  connection: Connection,
+  tokenAccount: PublicKey,
+): Promise<bigint | null> {
+  const info = await connection.getAccountInfo(tokenAccount);
+  if (!info) {
+    return null;
+  }
+  const view = new DataView(
+    info.data.buffer,
+    info.data.byteOffset,
+    info.data.byteLength,
+  );
+  return view.getBigUint64(TOKEN_ACCOUNT_AMOUNT_OFFSET, true);
+}
 
-  return { messageTransmitterProgram, tokenMessengerMinterProgram };
-};
-
-export const getDepositForBurnPdas = (
-  {
-    messageTransmitterProgram,
-    tokenMessengerMinterProgram,
-  }: ReturnType<typeof getPrograms>,
-  usdcAddress: PublicKey,
+export async function getDepositForBurnPdas(
+  usdcMint: PublicKey,
   destinationDomain: number,
-  owner: PublicKey
-) => {
-  const messageTransmitterAccount = findProgramAddress(
-    "message_transmitter",
-    messageTransmitterProgram.programId
-  );
-  const tokenMessengerAccount = findProgramAddress(
-    "token_messenger",
-    tokenMessengerMinterProgram.programId
-  );
-  const tokenMinterAccount = findProgramAddress(
-    "token_minter",
-    tokenMessengerMinterProgram.programId
-  );
-  const localToken = findProgramAddress(
-    "local_token",
-    tokenMessengerMinterProgram.programId,
-    [usdcAddress]
-  );
-  const remoteTokenMessengerKey = findProgramAddress(
-    "remote_token_messenger",
-    tokenMessengerMinterProgram.programId,
-    [destinationDomain.toString()]
-  );
-  const authorityPda = findProgramAddress(
-    "sender_authority",
-    tokenMessengerMinterProgram.programId
-  );
-  const denylistAccount = findProgramAddress(
-    "denylist_account",
-    tokenMessengerMinterProgram.programId,
-    [owner]
-  );
-  const eventAuthority = findProgramAddress(
-    "__event_authority",
-    tokenMessengerMinterProgram.programId
-  );
+  owner: PublicKey,
+) {
+  const [
+    messageTransmitter,
+    tokenMessenger,
+    tokenMinter,
+    localToken,
+    remoteTokenMessenger,
+    senderAuthority,
+    denylistAccount,
+    eventAuthority,
+  ] = await Promise.all([
+    findProgramAddress("message_transmitter", MESSAGE_TRANSMITTER_PROGRAM_ID),
+    findProgramAddress("token_messenger", TOKEN_MESSENGER_MINTER_PROGRAM_ID),
+    findProgramAddress("token_minter", TOKEN_MESSENGER_MINTER_PROGRAM_ID),
+    findProgramAddress("local_token", TOKEN_MESSENGER_MINTER_PROGRAM_ID, [
+      usdcMint,
+    ]),
+    findProgramAddress(
+      "remote_token_messenger",
+      TOKEN_MESSENGER_MINTER_PROGRAM_ID,
+      [destinationDomain.toString()],
+    ),
+    findProgramAddress("sender_authority", TOKEN_MESSENGER_MINTER_PROGRAM_ID),
+    findProgramAddress("denylist_account", TOKEN_MESSENGER_MINTER_PROGRAM_ID, [
+      owner,
+    ]),
+    findProgramAddress("__event_authority", TOKEN_MESSENGER_MINTER_PROGRAM_ID),
+  ]);
 
   return {
-    messageTransmitterAccount,
-    tokenMessengerAccount,
-    tokenMinterAccount,
+    messageTransmitter,
+    tokenMessenger,
+    tokenMinter,
     localToken,
-    remoteTokenMessengerKey,
-    authorityPda,
+    remoteTokenMessenger,
+    senderAuthority,
     denylistAccount,
     eventAuthority,
   };
-};
+}
 
-export const getReceiveMessagePdas = async (
-  {
-    messageTransmitterProgram,
-    tokenMessengerMinterProgram,
-  }: ReturnType<typeof getPrograms>,
-  solUsdcAddress: PublicKey,
+export async function getReceiveMessagePdas(
+  connection: Connection,
+  solUsdcMint: PublicKey,
   remoteUsdcAddressHex: string,
   remoteDomain: string,
-  nonce: Buffer
-) => {
-  const tokenMessengerAccount = findProgramAddress(
-    "token_messenger",
-    tokenMessengerMinterProgram.programId
-  );
-  const messageTransmitterAccount = findProgramAddress(
-    "message_transmitter",
-    messageTransmitterProgram.programId
-  );
-  const tokenMinterAccount = findProgramAddress(
-    "token_minter",
-    tokenMessengerMinterProgram.programId
-  );
-  const localToken = findProgramAddress(
-    "local_token",
-    tokenMessengerMinterProgram.programId,
-    [solUsdcAddress]
-  );
-  const remoteTokenMessengerKey = findProgramAddress(
-    "remote_token_messenger",
-    tokenMessengerMinterProgram.programId,
-    [remoteDomain]
-  );
-  const remoteTokenKey = new PublicKey(hexToBytes(remoteUsdcAddressHex));
-  const tokenPair = findProgramAddress(
-    "token_pair",
-    tokenMessengerMinterProgram.programId,
-    [remoteDomain, remoteTokenKey]
-  );
-  const custodyTokenAccount = findProgramAddress(
-    "custody",
-    tokenMessengerMinterProgram.programId,
-    [solUsdcAddress]
-  );
-  const authorityPda = findProgramAddress(
-    "message_transmitter_authority",
-    messageTransmitterProgram.programId,
-    [tokenMessengerMinterProgram.programId]
-  ).publicKey;
-  const tokenMessengerEventAuthority = findProgramAddress(
-    "__event_authority",
-    tokenMessengerMinterProgram.programId
-  );
-  const messageTransmitterEventAuthority = findProgramAddress(
-    "__event_authority",
-    messageTransmitterProgram.programId
-  );
-  const usedNonce = findProgramAddress(
-    "used_nonce",
-    messageTransmitterProgram.programId,
-    [nonce]
-  ).publicKey;
+  nonce: Uint8Array,
+) {
+  const remoteToken = new PublicKey(hexToBytes(remoteUsdcAddressHex));
 
-  const tokenMessengerAccounts = await (
-    tokenMessengerMinterProgram.account as any
-  ).tokenMessenger.fetch(tokenMessengerAccount.publicKey);
+  const [
+    tokenMessenger,
+    messageTransmitter,
+    tokenMinter,
+    localToken,
+    remoteTokenMessenger,
+    tokenPair,
+    custodyTokenAccount,
+    authorityPda,
+    tokenMessengerEventAuthority,
+    messageTransmitterEventAuthority,
+    usedNonce,
+  ] = await Promise.all([
+    findProgramAddress("token_messenger", TOKEN_MESSENGER_MINTER_PROGRAM_ID),
+    findProgramAddress("message_transmitter", MESSAGE_TRANSMITTER_PROGRAM_ID),
+    findProgramAddress("token_minter", TOKEN_MESSENGER_MINTER_PROGRAM_ID),
+    findProgramAddress("local_token", TOKEN_MESSENGER_MINTER_PROGRAM_ID, [
+      solUsdcMint,
+    ]),
+    findProgramAddress(
+      "remote_token_messenger",
+      TOKEN_MESSENGER_MINTER_PROGRAM_ID,
+      [remoteDomain],
+    ),
+    findProgramAddress("token_pair", TOKEN_MESSENGER_MINTER_PROGRAM_ID, [
+      remoteDomain,
+      remoteToken,
+    ]),
+    findProgramAddress("custody", TOKEN_MESSENGER_MINTER_PROGRAM_ID, [
+      solUsdcMint,
+    ]),
+    findProgramAddress(
+      "message_transmitter_authority",
+      MESSAGE_TRANSMITTER_PROGRAM_ID,
+      [TOKEN_MESSENGER_MINTER_PROGRAM_ID],
+    ),
+    findProgramAddress("__event_authority", TOKEN_MESSENGER_MINTER_PROGRAM_ID),
+    findProgramAddress("__event_authority", MESSAGE_TRANSMITTER_PROGRAM_ID),
+    findProgramAddress("used_nonce", MESSAGE_TRANSMITTER_PROGRAM_ID, [nonce]),
+  ]);
+
+  const feeRecipient = await readTokenMessengerFeeRecipient(
+    connection,
+    tokenMessenger,
+  );
   const feeRecipientTokenAccount = await getAssociatedTokenAddress(
-    solUsdcAddress,
-    tokenMessengerAccounts.feeRecipient
+    solUsdcMint,
+    feeRecipient,
   );
 
   return {
-    messageTransmitterAccount,
-    tokenMessengerAccount,
-    tokenMinterAccount,
+    tokenMessenger,
+    messageTransmitter,
+    tokenMinter,
     localToken,
-    remoteTokenMessengerKey,
-    remoteTokenKey,
+    remoteTokenMessenger,
+    remoteToken,
     tokenPair,
     custodyTokenAccount,
     authorityPda,
@@ -232,46 +229,248 @@ export const getReceiveMessagePdas = async (
     usedNonce,
     feeRecipientTokenAccount,
   };
-};
+}
+
+export function createDepositForBurnInstruction(params: {
+  amount: bigint;
+  destinationDomain: number;
+  mintRecipient: PublicKey;
+  destinationCaller: PublicKey;
+  maxFee: bigint;
+  minFinalityThreshold: number;
+  owner: PublicKey;
+  userTokenAccount: PublicKey;
+  usdcMint: PublicKey;
+  messageSentEventAccount: PublicKey;
+  pdas: Awaited<ReturnType<typeof getDepositForBurnPdas>>;
+}): TransactionInstruction {
+  const data = concatBytes(
+    DEPOSIT_FOR_BURN_DISCRIMINATOR,
+    encodeU64(params.amount),
+    encodeU32(params.destinationDomain),
+    params.mintRecipient.toBytes(),
+    params.destinationCaller.toBytes(),
+    encodeU64(params.maxFee),
+    encodeU32(params.minFinalityThreshold),
+  );
+
+  return new TransactionInstruction({
+    programId: TOKEN_MESSENGER_MINTER_PROGRAM_ID,
+    keys: [
+      { pubkey: params.owner, isSigner: true, isWritable: false },
+      { pubkey: params.owner, isSigner: true, isWritable: true },
+      { pubkey: params.pdas.senderAuthority, isSigner: false, isWritable: false },
+      { pubkey: params.userTokenAccount, isSigner: false, isWritable: true },
+      { pubkey: params.pdas.denylistAccount, isSigner: false, isWritable: false },
+      {
+        pubkey: params.pdas.messageTransmitter,
+        isSigner: false,
+        isWritable: true,
+      },
+      { pubkey: params.pdas.tokenMessenger, isSigner: false, isWritable: false },
+      {
+        pubkey: params.pdas.remoteTokenMessenger,
+        isSigner: false,
+        isWritable: false,
+      },
+      { pubkey: params.pdas.tokenMinter, isSigner: false, isWritable: false },
+      { pubkey: params.pdas.localToken, isSigner: false, isWritable: true },
+      { pubkey: params.usdcMint, isSigner: false, isWritable: true },
+      {
+        pubkey: params.messageSentEventAccount,
+        isSigner: true,
+        isWritable: true,
+      },
+      {
+        pubkey: MESSAGE_TRANSMITTER_PROGRAM_ID,
+        isSigner: false,
+        isWritable: false,
+      },
+      {
+        pubkey: TOKEN_MESSENGER_MINTER_PROGRAM_ID,
+        isSigner: false,
+        isWritable: false,
+      },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      { pubkey: params.pdas.eventAuthority, isSigner: false, isWritable: false },
+      {
+        pubkey: TOKEN_MESSENGER_MINTER_PROGRAM_ID,
+        isSigner: false,
+        isWritable: false,
+      },
+    ],
+    data,
+  });
+}
+
+export function createReceiveMessageInstruction(params: {
+  payer: PublicKey;
+  message: Uint8Array;
+  attestation: Uint8Array;
+  pdas: Awaited<ReturnType<typeof getReceiveMessagePdas>>;
+  userTokenAccount: PublicKey;
+}): TransactionInstruction {
+  const data = concatBytes(
+    RECEIVE_MESSAGE_DISCRIMINATOR,
+    encodeBytes(params.message),
+    encodeBytes(params.attestation),
+  );
+
+  const remainingAccounts = [
+    { pubkey: params.pdas.tokenMessenger, isSigner: false, isWritable: false },
+    {
+      pubkey: params.pdas.remoteTokenMessenger,
+      isSigner: false,
+      isWritable: false,
+    },
+    { pubkey: params.pdas.tokenMinter, isSigner: false, isWritable: true },
+    { pubkey: params.pdas.localToken, isSigner: false, isWritable: true },
+    { pubkey: params.pdas.tokenPair, isSigner: false, isWritable: false },
+    {
+      pubkey: params.pdas.feeRecipientTokenAccount,
+      isSigner: false,
+      isWritable: true,
+    },
+    { pubkey: params.userTokenAccount, isSigner: false, isWritable: true },
+    {
+      pubkey: params.pdas.custodyTokenAccount,
+      isSigner: false,
+      isWritable: true,
+    },
+    { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+    {
+      pubkey: params.pdas.tokenMessengerEventAuthority,
+      isSigner: false,
+      isWritable: false,
+    },
+    {
+      pubkey: TOKEN_MESSENGER_MINTER_PROGRAM_ID,
+      isSigner: false,
+      isWritable: false,
+    },
+  ];
+
+  return new TransactionInstruction({
+    programId: MESSAGE_TRANSMITTER_PROGRAM_ID,
+    keys: [
+      { pubkey: params.payer, isSigner: true, isWritable: true },
+      { pubkey: params.payer, isSigner: true, isWritable: false },
+      { pubkey: params.pdas.authorityPda, isSigner: false, isWritable: false },
+      {
+        pubkey: params.pdas.messageTransmitter,
+        isSigner: false,
+        isWritable: false,
+      },
+      { pubkey: params.pdas.usedNonce, isSigner: false, isWritable: true },
+      {
+        pubkey: TOKEN_MESSENGER_MINTER_PROGRAM_ID,
+        isSigner: false,
+        isWritable: false,
+      },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      {
+        pubkey: params.pdas.messageTransmitterEventAuthority,
+        isSigner: false,
+        isWritable: false,
+      },
+      {
+        pubkey: MESSAGE_TRANSMITTER_PROGRAM_ID,
+        isSigner: false,
+        isWritable: false,
+      },
+      ...remainingAccounts,
+    ],
+    data,
+  });
+}
+
+export async function sendSolanaTransaction(params: {
+  connection: Connection;
+  wallet: SolanaWalletSigner;
+  instructions: TransactionInstruction[];
+  signers?: Keypair[];
+}): Promise<string> {
+  const { blockhash, lastValidBlockHeight } =
+    await params.connection.getLatestBlockhash("confirmed");
+
+  const tx = new Transaction({
+    feePayer: params.wallet.publicKey,
+    blockhash,
+    lastValidBlockHeight,
+  }).add(...params.instructions);
+
+  if (params.signers?.length) {
+    await tx.partialSign(...params.signers);
+  }
+
+  const signed = await params.wallet.signTransaction(tx);
+  const signature = await params.connection.sendRawTransaction(
+    await signed.serialize(),
+  );
+  await params.connection.confirmTransaction(
+    { signature, blockhash, lastValidBlockHeight },
+    "confirmed",
+  );
+  return signature;
+}
 
 export const evmAddressToBytes32 = (address: string): string =>
   `0x000000000000000000000000${address.replace("0x", "")}`;
 
-export const hexToBytes = (hex: string): Buffer =>
-  Buffer.from(hex.replace("0x", ""), "hex");
-
-// Convenience wrapper for PublicKey.findProgramAddressSync
-export const findProgramAddress = (
-  label: string,
-  programId: PublicKey,
-  extraSeeds: (string | number[] | Buffer | PublicKey)[] | null = null
-): FindProgramAddressResponse => {
-  const seeds = [Buffer.from(anchor.utils.bytes.utf8.encode(label))];
-  if (extraSeeds) {
-    for (const extraSeed of extraSeeds) {
-      if (typeof extraSeed === "string") {
-        seeds.push(Buffer.from(anchor.utils.bytes.utf8.encode(extraSeed)));
-      } else if (Array.isArray(extraSeed)) {
-        seeds.push(Buffer.from(extraSeed as number[]));
-      } else if (Buffer.isBuffer(extraSeed)) {
-        seeds.push(Buffer.from(extraSeed));
-      } else {
-        seeds.push(Buffer.from(extraSeed.toBuffer()));
-      }
-    }
+export function hexToBytes(hex: string): Uint8Array {
+  const normalized = hex.replace(/^0x/, "");
+  const bytes = new Uint8Array(normalized.length / 2);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = Number.parseInt(normalized.slice(i * 2, i * 2 + 2), 16);
   }
-  const res = PublicKey.findProgramAddressSync(seeds, programId);
-  return { publicKey: res[0], bump: res[1] };
-};
+  return bytes;
+}
 
 // CCTP V2 message header: nonce is at byte offset 12, 32 bytes (message[12..44])
-export const decodeNonceFromMessage = (messageHex: string): Buffer => {
-  const nonceIndex = 12;
-  const nonceBytesLength = 32;
-  const message = hexToBytes(messageHex);
-  const eventNonceBytes = message.subarray(
-    nonceIndex,
-    nonceIndex + nonceBytesLength
+export function decodeNonceFromMessage(messageHex: string): Uint8Array {
+  return hexToBytes(messageHex).subarray(12, 44);
+}
+
+async function readTokenMessengerFeeRecipient(
+  connection: Connection,
+  tokenMessenger: PublicKey,
+): Promise<PublicKey> {
+  const info = await connection.getAccountInfo(tokenMessenger);
+  if (!info) {
+    throw new Error("TokenMessenger account not found");
+  }
+  return new PublicKey(
+    info.data.subarray(
+      TOKEN_MESSENGER_FEE_RECIPIENT_OFFSET,
+      TOKEN_MESSENGER_FEE_RECIPIENT_OFFSET + 32,
+    ),
   );
-  return eventNonceBytes;
-};
+}
+
+function encodeU32(value: number): Uint8Array {
+  const out = new Uint8Array(4);
+  new DataView(out.buffer).setUint32(0, value, true);
+  return out;
+}
+
+function encodeU64(value: bigint): Uint8Array {
+  const out = new Uint8Array(8);
+  new DataView(out.buffer).setBigUint64(0, value, true);
+  return out;
+}
+
+function encodeBytes(value: Uint8Array): Uint8Array {
+  return concatBytes(encodeU32(value.length), value);
+}
+
+function concatBytes(...parts: Uint8Array[]): Uint8Array {
+  const total = parts.reduce((sum, part) => sum + part.length, 0);
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const part of parts) {
+    out.set(part, offset);
+    offset += part.length;
+  }
+  return out;
+}

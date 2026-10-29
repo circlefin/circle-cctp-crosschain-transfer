@@ -31,22 +31,27 @@ import {
   hexToBytes,
 } from "viem";
 
-import { Connection, Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
-import {
-  getAssociatedTokenAddress,
-  getAccount,
-  TokenAccountNotFoundError,
-  TokenInvalidAccountOwnerError,
-  TOKEN_PROGRAM_ID,
-} from "@solana/spl-token";
+import { Keypair, PublicKey } from "@solana/web3.js";
 import bs58 from "bs58";
-import { BN } from "@coral-xyz/anchor";
 import {
   SupportedChainId,
   CHAIN_CONFIGS,
   SOLANA_RPC_ENDPOINT,
   IRIS_API_URL,
 } from "@/lib/chains";
+import {
+  createDepositForBurnInstruction,
+  createReceiveMessageInstruction,
+  decodeNonceFromMessage,
+  evmAddressToBytes32,
+  getAssociatedTokenAddress,
+  getDepositForBurnPdas,
+  getReceiveMessagePdas,
+  getSolanaConnection,
+  getTokenAccountAmount,
+  hexToBytes as solanaHexToBytes,
+  sendSolanaTransaction,
+} from "@/lib/solana-utils";
 import {
   ensureEvmChain,
   getEvmWalletClient,
@@ -381,48 +386,30 @@ export function useCrossChainTransfer() {
     setCurrentStep("burning");
     addLog("Burning Solana USDC...");
 
-    const {
-      getAnchorConnection,
-      getPrograms,
-      getDepositForBurnPdas,
-    } = await import("@/lib/solana-utils");
-    const { getAssociatedTokenAddress } = await import("@solana/spl-token");
     const walletPublicKey = wallet.publicKey;
     if (!walletPublicKey) {
       throw new Error("Connect a Solana wallet to continue.");
     }
 
-    const provider = getAnchorConnection(
-      {
-        publicKey: walletPublicKey,
-        signTransaction: wallet.signTransaction,
-        signAllTransactions: wallet.signAllTransactions,
-      },
-      SOLANA_RPC_ENDPOINT,
-    );
-    const { messageTransmitterProgram, tokenMessengerMinterProgram } =
-      getPrograms(provider);
-
+    const connection = getSolanaConnection(SOLANA_RPC_ENDPOINT);
     const usdcMint = new PublicKey(
       CHAIN_CONFIGS[SupportedChainId.SOLANA_DEVNET].usdcAddress as string,
     );
+    const destinationDomain =
+      CHAIN_CONFIGS[destinationChainId as SupportedChainId].destinationDomain;
 
-    const pdas = getDepositForBurnPdas(
-      { messageTransmitterProgram, tokenMessengerMinterProgram },
+    const pdas = await getDepositForBurnPdas(
       usdcMint,
-      CHAIN_CONFIGS[destinationChainId as SupportedChainId].destinationDomain,
+      destinationDomain,
       walletPublicKey,
     );
-
-    const messageSentEventAccountKeypair = Keypair.generate();
-
+    const messageSentEventAccount = await Keypair.generate();
     const userTokenAccount = await getAssociatedTokenAddress(
       usdcMint,
       walletPublicKey,
     );
 
     let mintRecipient: PublicKey;
-
     if (
       CHAIN_CONFIGS[destinationChainId as SupportedChainId].ecosystem ===
       "solana"
@@ -454,43 +441,29 @@ export function useCrossChainTransfer() {
           )
         : 0n;
 
-    // Anchor's generated IDL types don't fully align with .methods at runtime (known issue in @coral-xyz/anchor 0.30+)
-    const depositForBurnTx = await (tokenMessengerMinterProgram as any).methods
-      .depositForBurn({
-        amount: new BN(amount.toString()),
-        destinationDomain:
-          CHAIN_CONFIGS[destinationChainId as SupportedChainId]
-            .destinationDomain,
-        mintRecipient,
-        maxFee: new BN(maxFee.toString()),
-        minFinalityThreshold:
-          transferType === "fast"
-            ? FAST_FINALITY_THRESHOLD
-            : STANDARD_FINALITY_THRESHOLD,
-        destinationCaller,
-      })
-      .accounts({
-        owner: walletPublicKey,
-        eventRentPayer: walletPublicKey,
-        senderAuthorityPda: pdas.authorityPda.publicKey,
-        burnTokenAccount: userTokenAccount,
-        denylistAccount: pdas.denylistAccount.publicKey,
-        messageTransmitter: pdas.messageTransmitterAccount.publicKey,
-        tokenMessenger: pdas.tokenMessengerAccount.publicKey,
-        remoteTokenMessenger: pdas.remoteTokenMessengerKey.publicKey,
-        tokenMinter: pdas.tokenMinterAccount.publicKey,
-        localToken: pdas.localToken.publicKey,
-        burnTokenMint: usdcMint,
-        messageSentEventData: messageSentEventAccountKeypair.publicKey,
-        messageTransmitterProgram: messageTransmitterProgram.programId,
-        tokenMessengerMinterProgram: tokenMessengerMinterProgram.programId,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-        eventAuthority: pdas.eventAuthority.publicKey,
-        program: tokenMessengerMinterProgram.programId,
-      })
-      .signers([messageSentEventAccountKeypair])
-      .rpc();
+    const depositForBurnTx = await sendSolanaTransaction({
+      connection,
+      wallet,
+      instructions: [
+        createDepositForBurnInstruction({
+          amount,
+          destinationDomain,
+          mintRecipient,
+          destinationCaller,
+          maxFee,
+          minFinalityThreshold:
+            transferType === "fast"
+              ? FAST_FINALITY_THRESHOLD
+              : STANDARD_FINALITY_THRESHOLD,
+          owner: walletPublicKey,
+          userTokenAccount,
+          usdcMint,
+          messageSentEventAccount: messageSentEventAccount.publicKey,
+          pdas,
+        }),
+      ],
+      signers: [messageSentEventAccount],
+    });
 
     addLog(`Solana burn transaction: ${depositForBurnTx}`);
     return depositForBurnTx;
@@ -700,39 +673,24 @@ export function useCrossChainTransfer() {
     addLog("Minting Solana USDC...");
 
     try {
-      const {
-        getAnchorConnection,
-        getPrograms,
-        getReceiveMessagePdas,
-        decodeNonceFromMessage,
-        evmAddressToBytes32,
-      } = await import("@/lib/solana-utils");
-      const { getAssociatedTokenAddress } = await import("@solana/spl-token");
       const walletPublicKey = wallet.publicKey;
       if (!walletPublicKey) {
         throw new Error("Connect a Solana wallet to continue.");
       }
 
-      const provider = getAnchorConnection(
-        {
-          publicKey: walletPublicKey,
-          signTransaction: wallet.signTransaction,
-          signAllTransactions: wallet.signAllTransactions,
-        },
-        SOLANA_RPC_ENDPOINT,
-      );
-      const { messageTransmitterProgram, tokenMessengerMinterProgram } =
-        getPrograms(provider);
-
+      const connection = getSolanaConnection(SOLANA_RPC_ENDPOINT);
       const usdcMint = new PublicKey(
         CHAIN_CONFIGS[SupportedChainId.SOLANA_DEVNET].usdcAddress as string,
       );
       const messageHex = attestation.message;
       const attestationHex = attestation.attestation;
-
       const nonce = decodeNonceFromMessage(messageHex);
-      const messageBuffer = Buffer.from(messageHex.replace("0x", ""), "hex");
-      const sourceDomain = messageBuffer.readUInt32BE(4);
+      const messageBytes = solanaHexToBytes(messageHex);
+      const sourceDomain = new DataView(
+        messageBytes.buffer,
+        messageBytes.byteOffset,
+        messageBytes.byteLength,
+      ).getUint32(4, false);
 
       let remoteTokenAddressHex = "";
       for (const [, config] of Object.entries(CHAIN_CONFIGS)) {
@@ -754,86 +712,30 @@ export function useCrossChainTransfer() {
       }
 
       const pdas = await getReceiveMessagePdas(
-        { messageTransmitterProgram, tokenMessengerMinterProgram },
+        connection,
         usdcMint,
         remoteTokenAddressHex,
         sourceDomain.toString(),
         nonce,
       );
-
       const userTokenAccount = await getAssociatedTokenAddress(
         usdcMint,
         walletPublicKey,
       );
 
-      const accountMetas = [
-        {
-          isSigner: false,
-          isWritable: false,
-          pubkey: pdas.tokenMessengerAccount.publicKey,
-        },
-        {
-          isSigner: false,
-          isWritable: false,
-          pubkey: pdas.remoteTokenMessengerKey.publicKey,
-        },
-        {
-          isSigner: false,
-          isWritable: true,
-          pubkey: pdas.tokenMinterAccount.publicKey,
-        },
-        {
-          isSigner: false,
-          isWritable: true,
-          pubkey: pdas.localToken.publicKey,
-        },
-        {
-          isSigner: false,
-          isWritable: false,
-          pubkey: pdas.tokenPair.publicKey,
-        },
-        {
-          isSigner: false,
-          isWritable: true,
-          pubkey: pdas.feeRecipientTokenAccount,
-        },
-        { isSigner: false, isWritable: true, pubkey: userTokenAccount },
-        {
-          isSigner: false,
-          isWritable: true,
-          pubkey: pdas.custodyTokenAccount.publicKey,
-        },
-        { isSigner: false, isWritable: false, pubkey: TOKEN_PROGRAM_ID },
-        {
-          isSigner: false,
-          isWritable: false,
-          pubkey: pdas.tokenMessengerEventAuthority.publicKey,
-        },
-        {
-          isSigner: false,
-          isWritable: false,
-          pubkey: tokenMessengerMinterProgram.programId,
-        },
-      ];
-
-      const receiveMessageTx = await (messageTransmitterProgram as any).methods
-        .receiveMessage({
-          message: Buffer.from(messageHex.replace("0x", ""), "hex"),
-          attestation: Buffer.from(attestationHex.replace("0x", ""), "hex"),
-        })
-        .accounts({
-          payer: walletPublicKey,
-          caller: walletPublicKey,
-          authorityPda: pdas.authorityPda,
-          messageTransmitter: pdas.messageTransmitterAccount.publicKey,
-          usedNonce: pdas.usedNonce,
-          receiver: tokenMessengerMinterProgram.programId,
-          systemProgram: SystemProgram.programId,
-          eventAuthority: pdas.messageTransmitterEventAuthority.publicKey,
-          program: messageTransmitterProgram.programId,
-        })
-        .remainingAccounts(accountMetas)
-        .rpc();
+      const receiveMessageTx = await sendSolanaTransaction({
+        connection,
+        wallet,
+        instructions: [
+          createReceiveMessageInstruction({
+            payer: walletPublicKey,
+            message: messageBytes,
+            attestation: solanaHexToBytes(attestationHex),
+            pdas,
+            userTokenAccount,
+          }),
+        ],
+      });
 
       addLog(`Solana mint transaction: ${receiveMessageTx}`);
       setCurrentStep("completed");
@@ -915,26 +817,18 @@ export function useCrossChainTransfer() {
     const usdcMint = new PublicKey(
       CHAIN_CONFIGS[chainId].usdcAddress as string,
     );
-
-    try {
-      const associatedTokenAddress = await getAssociatedTokenAddress(
-        usdcMint,
-        solanaWallet.publicKey,
-      );
-
-      const tokenAccount = await getAccount(connection, associatedTokenAddress);
-      const balance =
-        Number(tokenAccount.amount) / Math.pow(10, DEFAULT_DECIMALS);
-      return balance.toString();
-    } catch (error) {
-      if (
-        error instanceof TokenAccountNotFoundError ||
-        error instanceof TokenInvalidAccountOwnerError
-      ) {
-        return "0";
-      }
-      throw error;
+    const associatedTokenAddress = await getAssociatedTokenAddress(
+      usdcMint,
+      solanaWallet.publicKey,
+    );
+    const amount = await getTokenAccountAmount(
+      connection,
+      associatedTokenAddress,
+    );
+    if (amount === null) {
+      return "0";
     }
+    return (Number(amount) / Math.pow(10, DEFAULT_DECIMALS)).toString();
   };
 
   const getEvmBalance = async (
@@ -1001,10 +895,6 @@ export function useCrossChainTransfer() {
       case "stellar":
         throw new Error("stellar wallets are not implemented yet");
     }
-  };
-
-  const getSolanaConnection = (): Connection => {
-    return new Connection(SOLANA_RPC_ENDPOINT, "confirmed");
   };
 
   const getBufferedFastTransferFee = async (

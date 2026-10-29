@@ -166,9 +166,9 @@ export async function discoverSolanaWallets(): Promise<Wallet[]> {
   return get().filter(isSolanaWallet);
 }
 
-function serializeSolanaTransaction(
+async function serializeSolanaTransaction(
   transaction: Transaction | VersionedTransaction,
-): Uint8Array {
+): Promise<Uint8Array> {
   if ("version" in transaction) {
     return transaction.serialize();
   }
@@ -221,7 +221,7 @@ export async function connectSolanaWallet(
     const [result] = await signFeature.signTransaction({
       account,
       chain: SOLANA_DEVNET_CHAIN,
-      transaction: serializeSolanaTransaction(transaction),
+      transaction: await serializeSolanaTransaction(transaction),
     });
     if (!result) {
       throw new Error("Wallet did not return a signed transaction");
