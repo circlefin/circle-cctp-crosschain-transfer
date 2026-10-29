@@ -35,7 +35,7 @@ The app will be running at `http://localhost:3000`.
 
 ## How It Works
 
-- The app is built with [Next.js](https://nextjs.org/) (App Router) and uses [viem](https://viem.sh/) for EVM interactions and [@coral-xyz/anchor](https://www.anchor-lang.com/) + [@solana/web3.js](https://solana-labs.github.io/solana-web3.js/) for Solana interactions.
+- The app is built with [Next.js](https://nextjs.org/) (App Router) and uses [viem](https://viem.sh/) for EVM interactions and [@solana/web3.js](https://www.npmjs.com/package/@solana/web3.js) v3 for Solana CCTP instructions (`depositForBurn` / `receiveMessage`).
 - The core transfer logic lives in a single React hook (`use-cross-chain-transfer.ts`) that orchestrates the four CCTP steps: approve spending on EVM source chains, burn USDC on the source chain, retrieve an attestation from Circle's IRIS sandbox API, and mint USDC on the destination chain. Solana transfers do not require a separate approval transaction.
 - Chain configuration (contract addresses, destination domains, viem chain definitions) is centralized in a single `CHAIN_CONFIGS` record in `chains.ts`.
 - The app uses the connected EVM and/or Solana wallet based on the selected source and destination chains.
@@ -73,7 +73,7 @@ The app will be running at `http://localhost:3000`.
 
 - `src/hooks/use-cross-chain-transfer.ts`: Core CCTP transfer hook (approve, burn, attest, mint)
 - `src/lib/chains.ts`: Centralized chain configuration and contract addresses
-- `src/lib/solana-utils.ts`: Solana-specific utilities (Anchor setup, PDA derivation, nonce decoding)
+- `src/lib/solana-utils.ts`: Solana CCTP helpers (PDA derivation, `depositForBurn` / `receiveMessage` instructions, send helper)
 - `src/app/page.tsx`: Main UI for selecting chains, entering amounts, and viewing transfer progress
 - `src/components/timer.tsx`: Transfer duration timer
 
