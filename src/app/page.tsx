@@ -18,7 +18,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 import { useCrossChainTransfer } from "@/hooks/use-cross-chain-transfer";
 
 import { Button } from "@/components/ui/button";
@@ -232,26 +232,25 @@ export default function Home() {
     }
   };
 
+  const fetchBalance = useEffectEvent(async () => {
+    try {
+      return await getBalance(sourceChain, wallets);
+    } catch (error) {
+      console.error("Failed to get balance:", error);
+      return "0";
+    }
+  });
+
   useEffect(() => {
     let cancelled = false;
-    const wrapper = async () => {
-      try {
-        const nextBalance = await getBalance(sourceChain, wallets);
-        if (!cancelled) {
-          setBalance(nextBalance);
-        }
-      } catch (error) {
-        console.error("Failed to get balance:", error);
-        if (!cancelled) {
-          setBalance("0");
-        }
+    fetchBalance().then((nextBalance) => {
+      if (!cancelled) {
+        setBalance(nextBalance);
       }
-    };
-    wrapper();
+    });
     return () => {
       cancelled = true;
     };
-    // getBalance is recreated each render; only refetch when chain/wallets change.
   }, [sourceChain, wallets]);
 
   const formatAddress = (address: string | null) => {
