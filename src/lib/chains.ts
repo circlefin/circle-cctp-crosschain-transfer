@@ -64,6 +64,7 @@ export enum SupportedChainId {
   POLYGON_AMOY = 80002,
   SEI_TESTNET = 1328,
   SOLANA_DEVNET = 103, // placeholder — Solana is not EVM
+  SUI_TESTNET = 105, // placeholder — Sui is not EVM
   SONIC_TESTNET = 14601,
   UNICHAIN_SEPOLIA = 1301,
   WORLDCHAIN_SEPOLIA = 4801,
@@ -71,7 +72,7 @@ export enum SupportedChainId {
   XLAYER_TESTNET = 1952,
 }
 
-export type Ecosystem = "evm" | "solana" | "aptos" | "stellar";
+export type Ecosystem = "evm" | "solana" | "aptos" | "sui" | "stellar";
 
 export interface ChainConfig {
   name: string;
@@ -81,6 +82,7 @@ export interface ChainConfig {
   tokenMessenger: Hex | string;
   messageTransmitter: Hex | string;
   destinationDomain: number;
+  supportsFastTransfer: boolean;
 }
 
 const edgeTestnet = defineChain({
@@ -144,6 +146,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
     messageTransmitter: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
     destinationDomain: 3,
+    supportsFastTransfer: true,
   },
   [SupportedChainId.ARC_TESTNET]: {
     name: "Arc Testnet",
@@ -153,6 +156,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
     tokenMessenger: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
     messageTransmitter: "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
     destinationDomain: 26,
+    supportsFastTransfer: false,
   },
   [SupportedChainId.APTOS_TESTNET]: {
     name: "Aptos Testnet",
@@ -164,6 +168,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
     messageTransmitter:
       "0xa582dc019ae17b0485f7d3fcc4ca85bea7941e3b70a4b682cea22759f36e711f",
     destinationDomain: 9,
+    supportsFastTransfer: false,
   },
   [SupportedChainId.AVAX_FUJI]: {
     name: "Avalanche Fuji",
@@ -173,6 +178,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
     messageTransmitter: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
     destinationDomain: 1,
+    supportsFastTransfer: false,
   },
   [SupportedChainId.BASE_SEPOLIA]: {
     name: "Base Sepolia",
@@ -182,6 +188,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
     messageTransmitter: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
     destinationDomain: 6,
+    supportsFastTransfer: true,
   },
   [SupportedChainId.CODEX_TESTNET]: {
     name: "Codex Testnet",
@@ -191,6 +198,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
     messageTransmitter: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
     destinationDomain: 12,
+    supportsFastTransfer: true,
   },
   [SupportedChainId.CRONOS_TESTNET]: {
     name: "Cronos Testnet",
@@ -200,6 +208,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
     messageTransmitter: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
     destinationDomain: 32,
+    supportsFastTransfer: false,
   },
   [SupportedChainId.EDGE_TESTNET]: {
     name: "Edge Testnet",
@@ -209,6 +218,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
     messageTransmitter: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
     destinationDomain: 28,
+    supportsFastTransfer: true,
   },
   [SupportedChainId.ETH_SEPOLIA]: {
     name: "Ethereum Sepolia",
@@ -218,6 +228,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
     messageTransmitter: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
     destinationDomain: 0,
+    supportsFastTransfer: true,
   },
   [SupportedChainId.HYPEREVM_TESTNET]: {
     name: "HyperEvm Testnet",
@@ -227,6 +238,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
     messageTransmitter: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
     destinationDomain: 19,
+    supportsFastTransfer: false,
   },
   [SupportedChainId.INJECTIVE_TESTNET]: {
     name: "Injective Testnet",
@@ -236,6 +248,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
     tokenMessenger: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
     messageTransmitter: "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
     destinationDomain: 29,
+    supportsFastTransfer: false,
   },
   [SupportedChainId.INK_SEPOLIA]: {
     name: "Ink Sepolia",
@@ -245,6 +258,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
     messageTransmitter: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
     destinationDomain: 21,
+    supportsFastTransfer: true,
   },
   [SupportedChainId.LINEA_SEPOLIA]: {
     name: "Linea Sepolia",
@@ -254,6 +268,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
     messageTransmitter: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
     destinationDomain: 11,
+    supportsFastTransfer: true,
   },
   [SupportedChainId.MONAD_TESTNET]: {
     name: "Monad Testnet",
@@ -263,6 +278,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
     messageTransmitter: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
     destinationDomain: 15,
+    supportsFastTransfer: false,
   },
   [SupportedChainId.MORPH_HOODI]: {
     name: "Morph Hoodi",
@@ -272,6 +288,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
     tokenMessenger: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
     messageTransmitter: "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
     destinationDomain: 30,
+    supportsFastTransfer: true,
   },
   [SupportedChainId.OPTIMISM_SEPOLIA]: {
     name: "Optimism Sepolia",
@@ -281,6 +298,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
     messageTransmitter: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
     destinationDomain: 2,
+    supportsFastTransfer: true,
   },
   [SupportedChainId.PHAROS_ATLANTIC]: {
     name: "Pharos Atlantic",
@@ -290,6 +308,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
     tokenMessenger: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
     messageTransmitter: "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
     destinationDomain: 31,
+    supportsFastTransfer: false,
   },
   [SupportedChainId.PLASMA_TESTNET]: {
     name: "Plasma Testnet",
@@ -299,6 +318,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
     tokenMessenger: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
     messageTransmitter: "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
     destinationDomain: 33,
+    supportsFastTransfer: false,
   },
   [SupportedChainId.PLUME_SEPOLIA]: {
     name: "Plume Sepolia",
@@ -308,6 +328,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
     messageTransmitter: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
     destinationDomain: 22,
+    supportsFastTransfer: true,
   },
   [SupportedChainId.POLYGON_AMOY]: {
     name: "Polygon Amoy",
@@ -317,6 +338,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
     messageTransmitter: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
     destinationDomain: 7,
+    supportsFastTransfer: false,
   },
   [SupportedChainId.SEI_TESTNET]: {
     name: "Sei Testnet",
@@ -326,6 +348,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
     messageTransmitter: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
     destinationDomain: 16,
+    supportsFastTransfer: false,
   },
   [SupportedChainId.SOLANA_DEVNET]: {
     name: "Solana Devnet",
@@ -334,6 +357,20 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
     tokenMessenger: "CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe",
     messageTransmitter: "CCTPV2Sm4AdWt5296sk4P66VBZ7bEhcARwFaaS9YPbeC",
     destinationDomain: 5,
+    supportsFastTransfer: true,
+  },
+  [SupportedChainId.SUI_TESTNET]: {
+    name: "Sui Testnet",
+    ecosystem: "sui",
+    // USDC package id (32-byte); coin type is `${usdcAddress}::usdc::USDC`
+    usdcAddress:
+      "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29",
+    tokenMessenger:
+      "0x267d3c0cb776eace2840f27e4d33da9c6d952f9749403f1fe6579f4962ed3c64",
+    messageTransmitter:
+      "0xe9678cd42a81886e18e21361088071f275105636a4d3751e1d7f255211f73bbe",
+    destinationDomain: 8,
+    supportsFastTransfer: false,
   },
   [SupportedChainId.SONIC_TESTNET]: {
     name: "Sonic Testnet",
@@ -343,6 +380,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
     messageTransmitter: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
     destinationDomain: 13,
+    supportsFastTransfer: false,
   },
   [SupportedChainId.UNICHAIN_SEPOLIA]: {
     name: "Unichain Sepolia",
@@ -352,6 +390,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
     messageTransmitter: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
     destinationDomain: 10,
+    supportsFastTransfer: true,
   },
   [SupportedChainId.WORLDCHAIN_SEPOLIA]: {
     name: "Worldchain Sepolia",
@@ -361,6 +400,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
     messageTransmitter: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
     destinationDomain: 14,
+    supportsFastTransfer: true,
   },
   [SupportedChainId.XDC_TESTNET]: {
     name: "XDC Testnet",
@@ -370,6 +410,7 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
     messageTransmitter: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
     destinationDomain: 18,
+    supportsFastTransfer: false,
   },
   [SupportedChainId.XLAYER_TESTNET]: {
     name: "XLayer Testnet",
@@ -379,13 +420,29 @@ export const CHAIN_CONFIGS: Record<SupportedChainId, ChainConfig> = {
     tokenMessenger: "0x8fe6b999dc680ccfdd5bf7eb0974218be2542daa",
     messageTransmitter: "0xe737e5cebeeba77efe34d4aa090756590b1ce275",
     destinationDomain: 37,
+    supportsFastTransfer: true,
   },
 };
 
-export const SUPPORTED_CHAINS = (Object.keys(CHAIN_CONFIGS).map(Number) as SupportedChainId[])
-  .sort((a, b) => CHAIN_CONFIGS[a].name.localeCompare(CHAIN_CONFIGS[b].name));
+// Aptos omitted from browser selects until wallet script signing works again.
+export const SUPPORTED_CHAINS = (
+  Object.keys(CHAIN_CONFIGS).map(Number) as SupportedChainId[]
+)
+  .filter((chainId) => chainId !== SupportedChainId.APTOS_TESTNET)
+  .sort((a, b) =>
+    CHAIN_CONFIGS[a].name.localeCompare(CHAIN_CONFIGS[b].name),
+  );
+
+/** Fast Transfer is a source-chain capability only. */
+export function supportsFastTransferAsSource(
+  chainId: SupportedChainId,
+): boolean {
+  return CHAIN_CONFIGS[chainId].supportsFastTransfer;
+}
 
 export const SOLANA_RPC_ENDPOINT = "https://api.devnet.solana.com";
+
+export const SUI_RPC_ENDPOINT = "https://fullnode.testnet.sui.io:443";
 
 export const IRIS_API_URL = "https://iris-api-sandbox.circle.com";
 
@@ -395,3 +452,24 @@ export const APTOS_DEPOSIT_FOR_BURN_SCRIPT_URL =
 
 export const APTOS_RECEIVE_MESSAGE_SCRIPT_URL =
   "/aptos/precompiled-move-scripts/receive_message.mv";
+
+/**
+ * Sui CCTP V2 shared object IDs (testnet).
+ * Package IDs live on CHAIN_CONFIGS[SUI_TESTNET]; these are the State /
+ * Treasury objects passed into PTB move calls.
+ * @see https://developers.circle.com/cctp/references/sui-packages
+ */
+export const SUI_CCTP_TESTNET = {
+  mtV2StateId:
+    "0xfee3a2b47f9ef2de2405fc63d79194307945f8ea768815cfc46083bc20fbe6ed",
+  tmmV2StateId:
+    "0x72cb55cd14d01e6361386d6ea93eecda9fa1efc3c202b8dd69c1e4683e4c0ca0",
+  handlerPackageId:
+    "0xbe8479044396a45e07de2c7f14789c35b8338406eebc53b2527da56839a91561",
+  handlerStateId:
+    "0xfbd9c0517c4f0e1817445ee2be598806e3c392a465d7e3d773d1055f3f0eed32",
+  treasuryId:
+    "0x7170137d4a6431bf83351ac025baf462909bffe2877d87716374fb42b9629ebe",
+  denyListId: "0x403",
+  clockId: "0x6",
+} as const;

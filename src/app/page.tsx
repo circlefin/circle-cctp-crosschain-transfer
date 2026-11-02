@@ -36,25 +36,17 @@ import {
   SupportedChainId,
   SUPPORTED_CHAINS,
   CHAIN_CONFIGS,
+  supportsFastTransferAsSource,
 } from "@/lib/chains";
 import { ProgressSteps } from "@/components/progress-step";
 import { TransferLog } from "@/components/transfer-log";
 import { Timer } from "@/components/timer";
 import { TransferTypeSelector } from "@/components/transfer-type";
 import {
-  connectAptosWallet,
-  connectEvmWallet,
-  connectSolanaWallet,
-  discoverAptosWallets,
-  discoverEvmWallets,
-  discoverSolanaWallets,
-  disconnectAptosWallet,
-  disconnectSolanaWallet,
-  type EvmProviderOption,
-  type WalletConnections,
-} from "@/lib/browser-wallets";
-import type { AptosWallet } from "@aptos-labs/wallet-standard";
-import type { Wallet } from "@wallet-standard/core";
+  isMissingRequiredWallet,
+  WalletConnectors,
+} from "@/components/wallet-connectors";
+import { type WalletConnections } from "@/lib/browser-wallets";
 
 export default function Home() {
   const { currentStep, logs, error, executeTransfer, getBalance, reset } =
@@ -62,46 +54,39 @@ export default function Home() {
   const [sourceChain, setSourceChain] = useState<SupportedChainId>(
     SupportedChainId.ARC_TESTNET,
   );
-  const [destinationChain, setDestinationChain] = useState<SupportedChainId>(
-    SupportedChainId.ETH_SEPOLIA,
-  );
+  const [destinationChain, setDestinationChain] =
+    useState<SupportedChainId | null>(SupportedChainId.ETH_SEPOLIA);
   const [amount, setAmount] = useState("");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isTransferring, setIsTransferring] = useState(false);
   const [showFinalTime, setShowFinalTime] = useState(false);
-  const [transferType, setTransferType] = useState<"fast" | "standard">("fast");
+  // Default source is Arc (Fast N/A); source-chain change flips to Fast on slow sources.
+  const [transferType, setTransferType] = useState<"fast" | "standard">(
+    "standard",
+  );
   const [balance, setBalance] = useState("0");
   const [wallets, setWallets] = useState<WalletConnections>({
     evm: null,
     solana: null,
     aptos: null,
+    sui: null,
     stellar: null,
   });
-  const [evmWalletOptions, setEvmWalletOptions] = useState<EvmProviderOption[]>(
-    [],
-  );
-  const [showEvmWalletPicker, setShowEvmWalletPicker] = useState(false);
-  const [solanaWalletOptions, setSolanaWalletOptions] = useState<Wallet[]>([]);
-  const [showSolanaWalletPicker, setShowSolanaWalletPicker] = useState(false);
-  const [aptosWalletOptions, setAptosWalletOptions] = useState<AptosWallet[]>(
-    [],
-  );
-  const [showAptosWalletPicker, setShowAptosWalletPicker] = useState(false);
 
   const sourceEcosystem = CHAIN_CONFIGS[sourceChain].ecosystem;
-  const destinationEcosystem = CHAIN_CONFIGS[destinationChain].ecosystem;
-  const needsEvmWallet =
-    sourceEcosystem === "evm" || destinationEcosystem === "evm";
-  const needsSolanaWallet =
-    sourceEcosystem === "solana" || destinationEcosystem === "solana";
-  const needsAptosWallet =
-    sourceEcosystem === "aptos" || destinationEcosystem === "aptos";
+  const fastTransferAvailable = supportsFastTransferAsSource(sourceChain);
   const missingRequiredWallet =
-    (needsEvmWallet && !wallets.evm) ||
-    (needsSolanaWallet && !wallets.solana) ||
-    (needsAptosWallet && !wallets.aptos);
+    destinationChain !== null &&
+    isMissingRequiredWallet(
+      wallets,
+      sourceEcosystem,
+      CHAIN_CONFIGS[destinationChain].ecosystem,
+    );
 
   const handleStartTransfer = async () => {
+    if (!destinationChain) {
+      return;
+    }
     setIsTransferring(true);
     setShowFinalTime(false);
     setElapsedSeconds(0);
@@ -129,109 +114,6 @@ export default function Home() {
     setElapsedSeconds(0);
   };
 
-  const handleEvmWalletClick = async () => {
-    if (wallets.evm) {
-      setWallets((current) => ({ ...current, evm: null }));
-      return;
-    }
-
-    try {
-      const options = await discoverEvmWallets();
-      if (options.length > 1) {
-        setEvmWalletOptions(options);
-        setShowEvmWalletPicker(true);
-        return;
-      }
-
-      const connection = await connectEvmWallet(options[0]);
-      setWallets((current) => ({ ...current, evm: connection }));
-    } catch (error) {
-      console.error("Failed to connect EVM wallet:", error);
-    }
-  };
-
-  const handleEvmWalletSelect = async (provider: EvmProviderOption) => {
-    try {
-      const connection = await connectEvmWallet(provider);
-      setWallets((current) => ({ ...current, evm: connection }));
-      setShowEvmWalletPicker(false);
-    } catch (error) {
-      console.error("Failed to connect selected EVM wallet:", error);
-    }
-  };
-
-  const handleSolanaWalletClick = async () => {
-    if (wallets.solana) {
-      try {
-        await disconnectSolanaWallet(wallets.solana);
-      } catch (error) {
-        console.error("Failed to disconnect Solana wallet:", error);
-      }
-      setWallets((current) => ({ ...current, solana: null }));
-      return;
-    }
-
-    try {
-      const options = await discoverSolanaWallets();
-      if (options.length > 1) {
-        setSolanaWalletOptions(options);
-        setShowSolanaWalletPicker(true);
-        return;
-      }
-
-      const connection = await connectSolanaWallet(options[0]);
-      setWallets((current) => ({ ...current, solana: connection }));
-    } catch (error) {
-      console.error("Failed to connect Solana wallet:", error);
-    }
-  };
-
-  const handleSolanaWalletSelect = async (wallet: Wallet) => {
-    try {
-      const connection = await connectSolanaWallet(wallet);
-      setWallets((current) => ({ ...current, solana: connection }));
-      setShowSolanaWalletPicker(false);
-    } catch (error) {
-      console.error("Failed to connect selected Solana wallet:", error);
-    }
-  };
-
-  const handleAptosWalletClick = async () => {
-    if (wallets.aptos) {
-      try {
-        await disconnectAptosWallet(wallets.aptos);
-      } catch (error) {
-        console.error("Failed to disconnect Aptos wallet:", error);
-      }
-      setWallets((current) => ({ ...current, aptos: null }));
-      return;
-    }
-
-    try {
-      const options = await discoverAptosWallets();
-      if (options.length > 1) {
-        setAptosWalletOptions(options);
-        setShowAptosWalletPicker(true);
-        return;
-      }
-
-      const connection = await connectAptosWallet(options[0]);
-      setWallets((current) => ({ ...current, aptos: connection }));
-    } catch (error) {
-      console.error("Failed to connect Aptos wallet:", error);
-    }
-  };
-
-  const handleAptosWalletSelect = async (wallet: AptosWallet) => {
-    try {
-      const connection = await connectAptosWallet(wallet);
-      setWallets((current) => ({ ...current, aptos: connection }));
-      setShowAptosWalletPicker(false);
-    } catch (error) {
-      console.error("Failed to connect selected Aptos wallet:", error);
-    }
-  };
-
   const fetchBalance = useEffectEvent(async () => {
     try {
       return await getBalance(sourceChain, wallets);
@@ -253,13 +135,6 @@ export default function Home() {
     };
   }, [sourceChain, wallets]);
 
-  const formatAddress = (address: string | null) => {
-    if (!address) {
-      return null;
-    }
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
-  };
-
   return (
     <div className="min-h-screen bg-gray-100 p-8">
       <Card className="max-w-3xl mx-auto">
@@ -269,108 +144,20 @@ export default function Home() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4 mb-3">
-            <div className="text-center">
-              <Button variant="outline" onClick={handleEvmWalletClick}>
-                {wallets.evm ? "Disconnect EVM Wallet" : "Connect EVM Wallet"}
-              </Button>
-              <p className="text-sm text-muted-foreground mt-2">
-                {wallets.evm
-                  ? `${formatAddress(wallets.evm.address)}${
-                      wallets.evm.providerInfo?.name
-                        ? ` (${wallets.evm.providerInfo.name})`
-                        : ""
-                    }`
-                  : "Required for EVM source or destination chains"}
-              </p>
-              {showEvmWalletPicker && (
-                <div className="mt-3 space-y-2 rounded-lg border bg-white p-3 text-left">
-                  <p className="text-sm font-medium">Choose EVM wallet</p>
-                  <div className="flex gap-3 flex-wrap">
-                    {evmWalletOptions.map((option) => (
-                      <Button
-                        key={option.info.uuid}
-                        variant="outline"
-                        onClick={() => handleEvmWalletSelect(option)}
-                      >
-                        {option.info.name}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="text-center">
-              <Button variant="outline" onClick={handleSolanaWalletClick}>
-                {wallets.solana
-                  ? "Disconnect Solana Wallet"
-                  : "Connect Solana Wallet"}
-              </Button>
-              <p className="text-sm text-muted-foreground mt-2">
-                {wallets.solana
-                  ? `${formatAddress(wallets.solana.address)} (${wallets.solana.walletName})`
-                  : "Required for Solana source or destination chains"}
-              </p>
-              {showSolanaWalletPicker && (
-                <div className="mt-3 space-y-2 rounded-lg border bg-white p-3 text-left">
-                  <p className="text-sm font-medium">Choose Solana wallet</p>
-                  <div className="flex gap-3 flex-wrap">
-                    {solanaWalletOptions.map((wallet) => (
-                      <Button
-                        key={wallet.name}
-                        variant="outline"
-                        onClick={() => handleSolanaWalletSelect(wallet)}
-                      >
-                        {wallet.name}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="text-center">
-              <Button variant="outline" onClick={handleAptosWalletClick}>
-                {wallets.aptos
-                  ? "Disconnect Aptos Wallet"
-                  : "Connect Aptos Wallet"}
-              </Button>
-              <p className="text-sm text-muted-foreground mt-2">
-                {wallets.aptos
-                  ? `${formatAddress(wallets.aptos.address)} (${wallets.aptos.walletName})`
-                  : "Required for Aptos source or destination chains"}
-              </p>
-              {showAptosWalletPicker && (
-                <div className="mt-3 space-y-2 rounded-lg border bg-white p-3 text-left">
-                  <p className="text-sm font-medium">Choose Aptos wallet</p>
-                  <div className="flex gap-3 flex-wrap">
-                    {aptosWalletOptions.map((wallet) => (
-                      <Button
-                        key={wallet.name}
-                        variant="outline"
-                        onClick={() => handleAptosWalletSelect(wallet)}
-                      >
-                        {wallet.name}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-          <p className="text-sm text-center">
-              Make sure your wallet can complete the transfer on the destination
-              chain.
-            </p>
+          <WalletConnectors wallets={wallets} onWalletsChange={setWallets} />
           <div className="space-y-2">
             <Label>Transfer Type</Label>
             <TransferTypeSelector
               value={transferType}
               onChange={setTransferType}
+              disableFast={!fastTransferAvailable}
             />
             <p className="text-sm text-muted-foreground">
-              {transferType === "fast"
-                ? "Faster transfers with lower finality threshold (1000 blocks)"
-                : "Standard transfers with higher finality (2000 blocks)"}
+              {!fastTransferAvailable
+                ? `Fast Transfer is not applicable for ${CHAIN_CONFIGS[sourceChain].name}. Standard transfer is already fast.`
+                : transferType === "fast"
+                  ? "Faster transfers with lower finality threshold (1000 blocks)"
+                  : "Standard transfers with higher finality (2000 blocks)"}
             </p>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -378,7 +165,19 @@ export default function Home() {
               <Label>Source Chain</Label>
               <Select
                 value={String(sourceChain)}
-                onValueChange={(value) => setSourceChain(Number(value))}
+                onValueChange={(value) => {
+                  const nextSource = Number(value) as SupportedChainId;
+                  setSourceChain(nextSource);
+                  // Slow sources (Fast available) default to Fast; N/A sources to Standard.
+                  setTransferType(
+                    supportsFastTransferAsSource(nextSource)
+                      ? "fast"
+                      : "standard",
+                  );
+                  if (destinationChain === nextSource) {
+                    setDestinationChain(null);
+                  }
+                }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select source chain" />
@@ -396,9 +195,12 @@ export default function Home() {
             <div className="space-y-2">
               <Label>Destination Chain</Label>
               <Select
-                value={String(destinationChain)}
-                onValueChange={(value) => setDestinationChain(Number(value))}
-                disabled={!sourceChain}
+                value={
+                  destinationChain !== null ? String(destinationChain) : ""
+                }
+                onValueChange={(value) =>
+                  setDestinationChain(Number(value) as SupportedChainId)
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select destination chain" />
@@ -419,13 +221,17 @@ export default function Home() {
           <div className="space-y-2">
             <Label>Amount (USDC)</Label>
             <Input
-              type="number"
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onChange={(e) => {
+                const next = e.target.value;
+                if (next === "" || /^\d*\.?\d*$/.test(next)) {
+                  setAmount(next);
+                }
+              }}
               placeholder="Enter amount"
-              min="0"
-              max={parseFloat(balance)}
-              step="any"
             />
             <p className="text-sm text-muted-foreground">{balance} available</p>
           </div>
@@ -456,6 +262,7 @@ export default function Home() {
               disabled={
                 isTransferring ||
                 currentStep === "completed" ||
+                !destinationChain ||
                 !amount ||
                 parseFloat(amount) <= 0 ||
                 missingRequiredWallet
