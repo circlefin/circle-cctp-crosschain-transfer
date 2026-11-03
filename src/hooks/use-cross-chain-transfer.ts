@@ -38,12 +38,13 @@ import {
   CHAIN_CONFIGS,
   SOLANA_RPC_ENDPOINT,
   IRIS_API_URL,
+  supportsFastTransferAsSource,
 } from "@/lib/chains";
 import {
   createDepositForBurnInstruction,
   createReceiveMessageInstruction,
+  decodeBurnTokenFromMessage,
   decodeNonceFromMessage,
-  evmAddressToBytes32,
   getAssociatedTokenAddress,
   getDepositForBurnPdas,
   getReceiveMessagePdas,
@@ -58,6 +59,7 @@ import {
   type AptosWalletConnection,
   type EvmClient,
   type SolanaWalletConnection,
+  type SuiWalletConnection,
   type WalletConnections,
 } from "@/lib/browser-wallets";
 
@@ -77,6 +79,7 @@ interface AttestationResponse {
 }
 
 interface FastTransferFeeResponse {
+  finalityThreshold?: number;
   minimumFee: number | string;
 }
 
@@ -131,6 +134,9 @@ export function useCrossChainTransfer() {
         case "aptos":
           await approveAptosUsdc();
           break;
+        case "sui":
+          await approveSuiUsdc();
+          break;
         case "evm":
           await approveEvmUsdc(
             sourceClient as EvmClient,
@@ -164,6 +170,15 @@ export function useCrossChainTransfer() {
             transferType,
           );
           break;
+        case "sui":
+          burnTx = await burnSuiUsdc(
+            sourceClient as SuiWalletConnection,
+            numericAmount,
+            destinationChainId,
+            defaultDestination,
+            transferType,
+          );
+          break;
         case "evm":
           burnTx = await burnEvmUsdc(
             sourceClient as EvmClient,
@@ -175,6 +190,8 @@ export function useCrossChainTransfer() {
             wallets,
           );
           break;
+        default:
+          throw new Error(`Unsupported source ecosystem: ${sourceEcosystem}`);
       }
 
       // Step 3: Retrieve attestation
@@ -191,6 +208,12 @@ export function useCrossChainTransfer() {
         case "aptos":
           await mintAptosUsdc(
             destinationClient as AptosWalletConnection,
+            attestation,
+          );
+          break;
+        case "sui":
+          await mintSuiUsdc(
+            destinationClient as SuiWalletConnection,
             attestation,
           );
           break;
@@ -258,10 +281,13 @@ export function useCrossChainTransfer() {
     });
 
     addLog(`USDC Approval Tx: ${tx}`);
-    await createPublicClient({
+    const receipt = await createPublicClient({
       chain: CHAIN_CONFIGS[sourceChainId as SupportedChainId].viemChain,
       transport: http(),
     }).waitForTransactionReceipt({ hash: tx });
+    if (receipt.status !== "success") {
+      throw new Error(`Approve transaction reverted: ${tx}`);
+    }
     return tx;
   };
 
@@ -275,6 +301,12 @@ export function useCrossChainTransfer() {
   const approveAptosUsdc = async () => {
     setCurrentStep("approving");
     return "aptos-approve-placeholder";
+  };
+
+  // Sui burn redeems SIP-58 funds inside the PTB (no separate approve)
+  const approveSuiUsdc = async () => {
+    setCurrentStep("approving");
+    return "sui-approve-placeholder";
   };
 
   // ---------------------------------------------------------------------------
@@ -297,18 +329,12 @@ export function useCrossChainTransfer() {
     if (!client.account) {
       throw new Error("Connect an EVM wallet to continue.");
     }
-    const minFinalityThreshold =
-      transferType === "fast"
-        ? FAST_FINALITY_THRESHOLD
-        : STANDARD_FINALITY_THRESHOLD;
-    const maxFee =
-      transferType === "fast"
-        ? await getBufferedFastTransferFee(
-            sourceChainId as SupportedChainId,
-            destinationChainId as SupportedChainId,
-            amount,
-          )
-        : 0n;
+    const { maxFee, minFinalityThreshold } = await resolveBurnFeeParams(
+      sourceChainId as SupportedChainId,
+      destinationChainId as SupportedChainId,
+      amount,
+      transferType,
+    );
 
     let mintRecipient: string;
     if (
@@ -369,10 +395,13 @@ export function useCrossChainTransfer() {
     });
 
     addLog(`Burn Tx: ${tx}`);
-    await createPublicClient({
+    const receipt = await createPublicClient({
       chain: CHAIN_CONFIGS[sourceChainId as SupportedChainId].viemChain,
       transport: http(),
     }).waitForTransactionReceipt({ hash: tx });
+    if (receipt.status !== "success") {
+      throw new Error(`Burn transaction reverted: ${tx}`);
+    }
     return tx;
   };
 
@@ -416,7 +445,7 @@ export function useCrossChainTransfer() {
     ) {
       mintRecipient = new PublicKey(destinationAddress);
     } else {
-      // EVM (20-byte) or Aptos (32-byte) → left-padded bytes32 → PublicKey
+      // EVM (20-byte) or Aptos/Sui (32-byte) → left-padded bytes32 → PublicKey
       const padded = `0x${destinationAddress
         .replace(/^0x/, "")
         .toLowerCase()
@@ -432,14 +461,12 @@ export function useCrossChainTransfer() {
           .padStart(64, "0")}` as Hex,
       ),
     );
-    const maxFee =
-      transferType === "fast"
-        ? await getBufferedFastTransferFee(
-            SupportedChainId.SOLANA_DEVNET,
-            destinationChainId as SupportedChainId,
-            amount,
-          )
-        : 0n;
+    const { maxFee, minFinalityThreshold } = await resolveBurnFeeParams(
+      SupportedChainId.SOLANA_DEVNET,
+      destinationChainId as SupportedChainId,
+      amount,
+      transferType,
+    );
 
     const depositForBurnTx = await sendSolanaTransaction({
       connection,
@@ -451,10 +478,7 @@ export function useCrossChainTransfer() {
           mintRecipient,
           destinationCaller,
           maxFee,
-          minFinalityThreshold:
-            transferType === "fast"
-              ? FAST_FINALITY_THRESHOLD
-              : STANDARD_FINALITY_THRESHOLD,
+          minFinalityThreshold,
           owner: walletPublicKey,
           userTokenAccount,
           usdcMint,
@@ -504,14 +528,12 @@ export function useCrossChainTransfer() {
       mintRecipient = toBytes32AccountAddress(destinationAddress);
     }
 
-    const maxFee =
-      transferType === "fast"
-        ? await getBufferedFastTransferFee(
-            SupportedChainId.APTOS_TESTNET,
-            destinationChainId as SupportedChainId,
-            amount,
-          )
-        : 0n;
+    const { maxFee, minFinalityThreshold } = await resolveBurnFeeParams(
+      SupportedChainId.APTOS_TESTNET,
+      destinationChainId as SupportedChainId,
+      amount,
+      transferType,
+    );
 
     const burnTx = await signAndSubmitAptosScript(wallet.wallet, wallet.address, {
       scriptUrl: APTOS_DEPOSIT_FOR_BURN_SCRIPT_URL,
@@ -524,15 +546,62 @@ export function useCrossChainTransfer() {
           CHAIN_CONFIGS[SupportedChainId.APTOS_TESTNET].usdcAddress as string,
         ),
         new U64(maxFee),
-        new U32(
-          transferType === "fast"
-            ? FAST_FINALITY_THRESHOLD
-            : STANDARD_FINALITY_THRESHOLD,
-        ),
+        new U32(minFinalityThreshold),
       ],
     });
 
     addLog(`Aptos burn transaction: ${burnTx}`);
+    return burnTx;
+  };
+
+  const burnSuiUsdc = async (
+    wallet: SuiWalletConnection,
+    amount: bigint,
+    destinationChainId: number,
+    destinationAddress: string,
+    transferType: "fast" | "standard",
+  ) => {
+    setCurrentStep("burning");
+    addLog("Burning Sui USDC...");
+
+    const {
+      buildDepositForBurnTransaction,
+      signAndExecuteSuiTransaction,
+    } = await import("@/lib/sui-utils");
+
+    const destinationConfig =
+      CHAIN_CONFIGS[destinationChainId as SupportedChainId];
+    let mintRecipient = destinationAddress;
+    if (destinationConfig.ecosystem === "solana") {
+      const usdcMint = new PublicKey(
+        CHAIN_CONFIGS[SupportedChainId.SOLANA_DEVNET].usdcAddress as string,
+      );
+      const tokenAccount = await getAssociatedTokenAddress(
+        usdcMint,
+        new PublicKey(destinationAddress),
+      );
+      mintRecipient = toHex(bs58.decode(tokenAccount.toBase58()));
+    }
+
+    const { maxFee, minFinalityThreshold } = await resolveBurnFeeParams(
+      SupportedChainId.SUI_TESTNET,
+      destinationChainId as SupportedChainId,
+      amount,
+      transferType,
+    );
+
+    const burnTx = await signAndExecuteSuiTransaction(
+      wallet,
+      buildDepositForBurnTransaction({
+        amount,
+        destinationDomain: destinationConfig.destinationDomain,
+        mintRecipient,
+        maxFee,
+        minFinalityThreshold,
+      }),
+    );
+
+    addLog(`Sui burn transaction: ${burnTx}`);
     return burnTx;
   };
 
@@ -692,29 +761,10 @@ export function useCrossChainTransfer() {
         messageBytes.byteLength,
       ).getUint32(4, false);
 
-      let remoteTokenAddressHex = "";
-      for (const [, config] of Object.entries(CHAIN_CONFIGS)) {
-        if (config.destinationDomain !== sourceDomain) {
-          continue;
-        }
-        if (config.ecosystem === "evm") {
-          remoteTokenAddressHex = evmAddressToBytes32(
-            config.usdcAddress as string,
-          );
-          break;
-        }
-        if (config.ecosystem === "aptos") {
-          remoteTokenAddressHex = `0x${(config.usdcAddress as string)
-            .replace(/^0x/, "")
-            .padStart(64, "0")}`;
-          break;
-        }
-      }
-
       const pdas = await getReceiveMessagePdas(
         connection,
         usdcMint,
-        remoteTokenAddressHex,
+        decodeBurnTokenFromMessage(messageHex),
         sourceDomain.toString(),
         nonce,
       );
@@ -776,6 +826,42 @@ export function useCrossChainTransfer() {
     return receiveTx;
   };
 
+  const mintSuiUsdc = async (
+    wallet: SuiWalletConnection,
+    attestation: AttestationResponse,
+  ) => {
+    setCurrentStep("minting");
+    addLog("Minting Sui USDC...");
+
+    const {
+      buildReceiveMessageTransaction,
+      foldMintedUsdcIntoAddressBalance,
+      signAndExecuteSuiTransaction,
+    } = await import("@/lib/sui-utils");
+
+    const receiveTx = await signAndExecuteSuiTransaction(
+      wallet,
+      buildReceiveMessageTransaction({
+        message: hexToBytes(attestation.message),
+        attestation: hexToBytes(attestation.attestation),
+      }),
+    );
+    addLog(`Sui mint transaction: ${receiveTx}`);
+
+    try {
+      const foldTx = await foldMintedUsdcIntoAddressBalance(wallet, receiveTx);
+      if (foldTx) {
+        addLog(`Sui SIP-58 fold transaction: ${foldTx}`);
+      }
+    } catch (foldError) {
+      console.error("Sui SIP-58 fold skipped:", foldError);
+      addLog("Sui mint succeeded; SIP-58 fold skipped (Coin may remain as object)");
+    }
+
+    setCurrentStep("completed");
+    return receiveTx;
+  };
+
   // ---------------------------------------------------------------------------
   // Helpers — Balance checks, client setup, key management
   // ---------------------------------------------------------------------------
@@ -791,6 +877,8 @@ export function useCrossChainTransfer() {
         return getEvmBalance(chainId, wallets);
       case "aptos":
         return getAptosBalance(wallets);
+      case "sui":
+        return getSuiBalance(wallets);
       case "stellar":
         return "0";
     }
@@ -802,6 +890,14 @@ export function useCrossChainTransfer() {
     }
     const { getAptosUsdcBalance } = await import("@/lib/aptos-utils");
     return getAptosUsdcBalance(wallets.aptos.address);
+  };
+
+  const getSuiBalance = async (wallets: WalletConnections) => {
+    if (!wallets.sui) {
+      return "0";
+    }
+    const { getSuiUsdcBalance } = await import("@/lib/sui-utils");
+    return getSuiUsdcBalance(wallets.sui.address);
   };
 
   const getSolanaBalance = async (
@@ -892,8 +988,64 @@ export function useCrossChainTransfer() {
         }
         return wallet;
       }
+      case "sui": {
+        const wallet = wallets.sui;
+        if (!wallet) {
+          throw new Error("Connect a Sui wallet to continue.");
+        }
+        return wallet;
+      }
       case "stellar":
         throw new Error("stellar wallets are not implemented yet");
+    }
+  };
+
+  /**
+   * Resolve maxFee + minFinalityThreshold for depositForBurn.
+   * Fast Transfer is source-only (CCTP support matrix). Standard is always
+   * available. When Fast is requested on an N/A source, or Iris fee quote
+   * fails, fall back to Standard (maxFee 0, finality 2000).
+   */
+  const resolveBurnFeeParams = async (
+    sourceChainId: SupportedChainId,
+    destinationChainId: SupportedChainId,
+    amount: bigint,
+    transferType: "fast" | "standard",
+  ) => {
+    const wantFast =
+      transferType === "fast" && supportsFastTransferAsSource(sourceChainId);
+
+    if (transferType === "fast" && !wantFast) {
+      addLog(
+        `Fast Transfer is not available from ${CHAIN_CONFIGS[sourceChainId].name}; using Standard Transfer`,
+      );
+    }
+
+    if (!wantFast) {
+      return {
+        maxFee: 0n,
+        minFinalityThreshold: STANDARD_FINALITY_THRESHOLD,
+      };
+    }
+
+    try {
+      const maxFee = await getBufferedFastTransferFee(
+        sourceChainId,
+        destinationChainId,
+        amount,
+      );
+      return {
+        maxFee,
+        minFinalityThreshold: FAST_FINALITY_THRESHOLD,
+      };
+    } catch (error) {
+      addLog(
+        `Fast fee unavailable (${getErrorMessage(error)}); falling back to Standard Transfer`,
+      );
+      return {
+        maxFee: 0n,
+        minFinalityThreshold: STANDARD_FINALITY_THRESHOLD,
+      };
     }
   };
 
@@ -910,11 +1062,17 @@ export function useCrossChainTransfer() {
     const response = await fetch(feeUrl);
 
     if (!response.ok) {
-      throw new Error(`Fee request failed with status ${response.status}`);
+      const body = await response.text();
+      throw new Error(
+        `Fee request failed with status ${response.status}${body ? `: ${body}` : ""}`,
+      );
     }
 
     const feePayload = (await response.json()) as FastTransferFeeResponse[];
-    const feeEntry = feePayload[0];
+    const feeEntry =
+      feePayload.find(
+        (entry) => entry.finalityThreshold === FAST_FINALITY_THRESHOLD,
+      ) ?? feePayload[0];
     if (!feeEntry) {
       throw new Error("No fee returned for this route");
     }
@@ -979,6 +1137,11 @@ export function useCrossChainTransfer() {
           throw new Error("Connect an Aptos wallet to continue.");
         }
         return wallets.aptos.address;
+      case "sui":
+        if (!wallets.sui) {
+          throw new Error("Connect a Sui wallet to continue.");
+        }
+        return wallets.sui.address;
       case "stellar":
         if (!wallets.stellar) {
           throw new Error("Connect a Stellar wallet to continue.");

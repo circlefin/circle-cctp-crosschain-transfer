@@ -158,12 +158,10 @@ export async function getDepositForBurnPdas(
 export async function getReceiveMessagePdas(
   connection: Connection,
   solUsdcMint: PublicKey,
-  remoteUsdcAddressHex: string,
+  remoteToken: PublicKey,
   remoteDomain: string,
   nonce: Uint8Array,
 ) {
-  const remoteToken = new PublicKey(hexToBytes(remoteUsdcAddressHex));
-
   const [
     tokenMessenger,
     messageTransmitter,
@@ -430,6 +428,11 @@ export function hexToBytes(hex: string): Uint8Array {
 // CCTP V2 message header: nonce is at byte offset 12, 32 bytes (message[12..44])
 export function decodeNonceFromMessage(messageHex: string): Uint8Array {
   return hexToBytes(messageHex).subarray(12, 44);
+}
+
+// CCTP V2: message body starts at 148; BurnMessage.burnToken at body+4.
+export function decodeBurnTokenFromMessage(messageHex: string): PublicKey {
+  return new PublicKey(hexToBytes(messageHex).subarray(152, 184));
 }
 
 async function readTokenMessengerFeeRecipient(

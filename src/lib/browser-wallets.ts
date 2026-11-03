@@ -15,9 +15,12 @@ import {
   Transaction,
   VersionedTransaction,
 } from "@solana/web3.js";
+import type { Transaction as SuiTransaction } from "@mysten/sui/transactions";
 import { custom, createWalletClient, type Hex } from "viem";
 
 import { CHAIN_CONFIGS, type SupportedChainId } from "@/lib/chains";
+
+const SUI_TESTNET_CHAIN = "sui:testnet";
 
 export type EvmClient = ReturnType<typeof createWalletClient>;
 
@@ -65,6 +68,15 @@ export interface AptosWalletConnection {
   disconnect(): Promise<void>;
 }
 
+export interface SuiWalletConnection {
+  address: string;
+  walletName: string;
+  signAndExecuteTransaction(
+    transaction: SuiTransaction,
+  ): Promise<{ digest: string }>;
+  disconnect(): Promise<void>;
+}
+
 /** Placeholder until Stellar wallet connect is wired. */
 export interface StellarWalletConnection {
   address: string;
@@ -74,6 +86,7 @@ export interface WalletConnections {
   evm: EvmWalletConnection | null;
   solana: SolanaWalletConnection | null;
   aptos: AptosWalletConnection | null;
+  sui: SuiWalletConnection | null;
   stellar: StellarWalletConnection | null;
 }
 
@@ -83,6 +96,21 @@ type SolanaSignTransactionFeature = {
     transaction: Uint8Array;
     chain?: string;
   }): Promise<readonly { signedTransaction: Uint8Array }[]>;
+};
+
+type SuiSignAndExecuteInput = {
+  account: WalletAccount;
+  transaction: SuiTransaction | { toJSON(): Promise<unknown> };
+  chain?: string;
+};
+
+type SuiSignAndExecuteTransactionFeature = {
+  signAndExecuteTransaction?(
+    input: SuiSignAndExecuteInput,
+  ): Promise<{ digest: string }>;
+  signAndExecuteTransactionBlock?(
+    input: SuiSignAndExecuteInput,
+  ): Promise<{ digest: string }>;
 };
 
 type StandardConnectFeature = {
@@ -297,6 +325,86 @@ export async function disconnectAptosWallet(
   await connection?.disconnect();
 }
 
+function isSuiWallet(wallet: Wallet): boolean {
+  return (
+    "sui:signAndExecuteTransaction" in wallet.features ||
+    "sui:signAndExecuteTransactionBlock" in wallet.features
+  );
+}
+
+export async function discoverSuiWallets(): Promise<Wallet[]> {
+  const { get } = getWallets();
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  return get().filter(isSuiWallet);
+}
+
+export async function connectSuiWallet(
+  selectedWallet?: Wallet,
+): Promise<SuiWalletConnection> {
+  const wallet = selectedWallet ?? (await discoverSuiWallets()).at(0);
+  if (!wallet) {
+    throw new Error("No Sui wallet detected (install Slush or another Sui wallet)");
+  }
+
+  const connectFeature = wallet.features["standard:connect"] as
+    | StandardConnectFeature
+    | undefined;
+  if (!connectFeature) {
+    throw new Error(`${wallet.name} does not support standard:connect`);
+  }
+
+  const { accounts } = await connectFeature.connect();
+  const account =
+    accounts.find((candidate) =>
+      candidate.chains.some((chain) => chain.includes("sui")),
+    ) ?? accounts[0];
+  if (!account) {
+    throw new Error("No Sui account returned by wallet");
+  }
+
+  const signFeature = (wallet.features["sui:signAndExecuteTransaction"] ??
+    wallet.features["sui:signAndExecuteTransactionBlock"]) as
+    | SuiSignAndExecuteTransactionFeature
+    | undefined;
+  const signAndExecute =
+    signFeature?.signAndExecuteTransaction ??
+    signFeature?.signAndExecuteTransactionBlock;
+  if (!signAndExecute) {
+    throw new Error(
+      `${wallet.name} does not support sui:signAndExecuteTransaction`,
+    );
+  }
+
+  const disconnectFeature = wallet.features["standard:disconnect"] as
+    | StandardDisconnectFeature
+    | undefined;
+
+  return {
+    address: account.address,
+    walletName: wallet.name,
+    signAndExecuteTransaction: async (transaction) => {
+      const result = await signAndExecute({
+        account,
+        transaction,
+        chain: SUI_TESTNET_CHAIN,
+      });
+      if (!result?.digest) {
+        throw new Error("Sui wallet did not return a transaction digest");
+      }
+      return { digest: result.digest };
+    },
+    disconnect: async () => {
+      await disconnectFeature?.disconnect();
+    },
+  };
+}
+
+export async function disconnectSuiWallet(
+  connection: SuiWalletConnection | null,
+) {
+  await connection?.disconnect();
+}
+
 export async function ensureEvmChain(
   provider: EvmProvider,
   chainId: SupportedChainId
@@ -308,20 +416,34 @@ export async function ensureEvmChain(
 
   const hexChainId = `0x${chainId.toString(16)}`;
 
-  await provider.request({
-    method: "wallet_addEthereumChain",
-    params: [
-      {
-        chainId: hexChainId,
-        chainName: chain.name,
-        nativeCurrency: chain.nativeCurrency,
-        rpcUrls: chain.rpcUrls.default.http,
-        blockExplorerUrls: chain.blockExplorers
-          ? Object.values(chain.blockExplorers).map(({ url }) => url)
-          : undefined,
-      },
-    ],
-  });
+  try {
+    await provider.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: hexChainId }],
+    });
+  } catch (error: unknown) {
+    const e = error as {
+      code?: number;
+      data?: { originalError?: { code?: number } };
+    };
+    const code = e.code ?? e.data?.originalError?.code;
+    if (code !== 4902) throw error;
+
+    await provider.request({
+      method: "wallet_addEthereumChain",
+      params: [
+        {
+          chainId: hexChainId,
+          chainName: chain.name,
+          nativeCurrency: chain.nativeCurrency,
+          rpcUrls: chain.rpcUrls.default.http,
+          blockExplorerUrls: chain.blockExplorers
+            ? Object.values(chain.blockExplorers).map(({ url }) => url)
+            : undefined,
+        },
+      ],
+    });
+  }
 
   const activeChainId = (await provider.request({ method: "eth_chainId" })) as string;
   if (parseInt(activeChainId, 16) !== chainId) {
